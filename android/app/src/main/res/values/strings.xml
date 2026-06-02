@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Visitas Residencial</string>
+    <string name="title_activity_main">Visitas Residencial</string>
+    <string name="package_name">gt.residencial.visitas</string>
+    <string name="custom_url_scheme">gt.residencial.visitas</string>
+</resources>

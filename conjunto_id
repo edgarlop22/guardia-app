@@ -1,0 +1,23 @@
+def crear_entrada(conjunto_id, guard_id, house_id, authorization_id, transport=None, vehicle_plate=None):
+    """Crear una entrada en la tabla entries"""
+    
+    data = {
+        "conjunto_id": conjunto_id,  # ← AGREGADO
+        "guard_id": guard_id,
+        "house_id": house_id,
+        "authorization_id": authorization_id,
+        "entered_at": datetime.now().isoformat(),
+        "transport": transport,
+        "vehicle_plate": vehicle_plate,
+        "notified_resident": False
+    }
+    
+    # ... resto igual
+
+# USO:
+crear_entrada(
+    conjunto_id="00000000-0000-0000-0000-000000000001",  # ← NUEVO
+    guard_id="12345678-1234-1234-1234-123456789012",
+    house_id="87654321-4321-4321-4321-210987654321",
+    authorization_id="11111111-2222-3333-4444-555555555555"
+)

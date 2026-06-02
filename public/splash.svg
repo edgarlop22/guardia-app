@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="2732" height="2732" viewBox="0 0 2732 2732">
+  <!--
+    Splash screen — 2732×2732 (Capacitor's recommended square source)
+    Capacitor auto-crops to portrait and landscape for each device.
+    Background: deep black (matches the Login screen)
+    Mark: centered shield-check, white wordmark below
+  -->
+  <defs>
+    <linearGradient id="bgRad" cx="50%" cy="50%" r="60%">
+      <stop offset="0%"   stop-color="#1C1917"/>
+      <stop offset="100%" stop-color="#000000"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="2732" height="2732" fill="url(#bgRad)"/>
+
+  <!-- Subtle grain dots scattered (matches the .grain-orange in CSS) -->
+  <g opacity="0.08" fill="#F97316">
+    <circle cx="200"  cy="300"  r="3"/>
+    <circle cx="500"  cy="450"  r="2"/>
+    <circle cx="800"  cy="200"  r="3"/>
+    <circle cx="1100" cy="400"  r="2"/>
+    <circle cx="1400" cy="250"  r="3"/>
+    <circle cx="1700" cy="500"  r="2"/>
+    <circle cx="2000" cy="200"  r="3"/>
+    <circle cx="2300" cy="400"  r="2"/>
+    <circle cx="2500" cy="250"  r="3"/>
+    <circle cx="300"  cy="700"  r="2"/>
+    <circle cx="600"  cy="850"  r="3"/>
+    <circle cx="2400" cy="800"  r="2"/>
+    <circle cx="200"  cy="2000" r="3"/>
+    <circle cx="600"  cy="2200" r="2"/>
+    <circle cx="2200" cy="2100" r="3"/>
+    <circle cx="2500" cy="2300" r="2"/>
+    <circle cx="1000" cy="2400" r="3"/>
+    <circle cx="1700" cy="2500" r="2"/>
+  </g>
+
+  <!--
+    Center the mark.
+    Splash safe area in Capacitor: keep important content in the center 33%
+    because iOS crops aggressively on different aspect ratios.
+    Mark is centered around (1366, 1300) with margin.
+  -->
+
+  <!-- Orange rounded square behind the shield, ~600px = visual anchor -->
+  <rect x="1066" y="1000" width="600" height="600" rx="120" fill="#F97316"/>
+
+  <!-- Shield inside the orange square -->
+  <g transform="translate(1066, 1000) scale(0.5859)">
+    <!-- 0.5859 = 600/1024 so the shield path scales from the 1024 icon -->
+    <path d="
+      M 512 168
+      C 380 168, 268 200, 200 232
+      L 200 532
+      C 200 712, 332 838, 512 904
+      C 692 838, 824 712, 824 532
+      L 824 232
+      C 756 200, 644 168, 512 168
+      Z
+    " fill="#0A0A0A"/>
+    <path d="M 340 530 L 460 650 L 700 410"
+      fill="none" stroke="#FFFFFF" stroke-width="84"
+      stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+
+  <!-- Wordmark below -->
+  <text x="1366" y="1820"
+        text-anchor="middle"
+        font-family="Georgia, serif"
+        font-weight="700"
+        font-size="180"
+        fill="#FFFFFF"
+        letter-spacing="-2">Garita</text>
+
+  <!-- Tagline -->
+  <text x="1366" y="1910"
+        text-anchor="middle"
+        font-family="'Courier New', monospace"
+        font-weight="700"
+        font-size="44"
+        fill="#F97316"
+        letter-spacing="8">CONTROL DE ACCESO · GT</text>
+</svg>
