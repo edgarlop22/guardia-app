@@ -244,7 +244,11 @@ export default function App() {
   const [pushPermission, setPushPermission] = useState('unsupported');
   const [screen, setScreen] = useState('login');
   const [authError, setAuthError] = useState(null);
+<<<<<<< HEAD
 
+=======
+  
+>>>>>>> 6998f477bd2319ccb58d5da02b4c1fd665662fc7
   useEffect(() => {
   // Detecta si estamos en una URL de reset password (enviada por email)
   const params = new URLSearchParams(window.location.search);
@@ -255,7 +259,11 @@ export default function App() {
     setScreen('reset-password');
   }
 }, []);
+<<<<<<< HEAD
 
+=======
+  
+>>>>>>> 6998f477bd2319ccb58d5da02b4c1fd665662fc7
   // Backend hook — loads real data after login when USE_SUPABASE is true
   const backend = useBackend(currentUser);
 
@@ -3202,6 +3210,7 @@ function ResetPasswordScreen({ onDone }) {
     setStatus('loading'); setError('');
     try {
       await api.updatePassword(password);
+      await api.signOut();
       setStatus('done');
       setTimeout(onDone, 2500);
     } catch (e) {
