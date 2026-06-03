@@ -3,22 +3,26 @@ import react from '@vitejs/plugin-react';
 import fs from 'fs';
 import path from 'path';
 
-// Plugin to copy landing.html to dist
-const copyLandingPlugin = {
-  name: 'copy-landing',
+const swapLandingPlugin = {
+  name: 'swap-landing',
   writeBundle() {
-    const landingPath = path.resolve(__dirname, 'landing.html');
-    const distPath = path.resolve(__dirname, 'dist', 'landing.html');
-    if (fs.existsSync(landingPath)) {
-      fs.copyFileSync(landingPath, distPath);
-      console.log('✓ landing.html copied to dist/');
+    const dist = path.resolve(__dirname, 'dist');
+    // React app: index.html → app.html
+    if (fs.existsSync(`${dist}/index.html`)) {
+      fs.copyFileSync(`${dist}/index.html`, `${dist}/app.html`);
     }
+    // Landing: landing.html → index.html (becomes root)
+    const landingSrc = path.resolve(__dirname, 'landing.html');
+    if (fs.existsSync(landingSrc)) {
+      fs.copyFileSync(landingSrc, `${dist}/index.html`);
+    }
+    console.log('✓ landing.html → dist/index.html');
+    console.log('✓ React app  → dist/app.html');
   }
 };
 
-// https://vitejs.dev/config/
 export default defineConfig({
-  plugins: [react(), copyLandingPlugin],
+  plugins: [react(), swapLandingPlugin],
   build: {
     outDir: 'dist',
     sourcemap: false,
@@ -34,7 +38,7 @@ export default defineConfig({
     },
   },
   server: {
-    host: true, // Listen on all addresses to allow device testing on LAN
+    host: true,
     port: 5173,
     strictPort: true,
   },

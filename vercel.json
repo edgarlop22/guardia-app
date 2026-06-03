@@ -3,8 +3,7 @@
   "installCommand": "npm install",
   "outputDirectory": "dist",
   "rewrites": [
-    { "source": "/app/:path*", "destination": "/index.html" },
-    { "source": "/app",        "destination": "/index.html" },
-    { "source": "/",           "destination": "/landing.html" }
+    { "source": "/app/:path*", "destination": "/app.html" },
+    { "source": "/app",        "destination": "/app.html" }
   ]
 }
