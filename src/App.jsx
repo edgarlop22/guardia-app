@@ -245,6 +245,17 @@ export default function App() {
   const [screen, setScreen] = useState('login');
   const [authError, setAuthError] = useState(null);
 
+  useEffect(() => {
+  // Detecta si estamos en una URL de reset password (enviada por email)
+  const params = new URLSearchParams(window.location.search);
+  const code = params.get('code');
+  const type = params.get('type');
+  
+  if (code && type === 'recovery') {
+    setScreen('reset-password');
+  }
+}, []);
+
   // Backend hook — loads real data after login when USE_SUPABASE is true
   const backend = useBackend(currentUser);
 
