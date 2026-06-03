@@ -11,9 +11,9 @@ key = os.getenv("SUPABASE_ANON_KEY")
 
 # OPCIÓN 2: Si no funciona, pega aquí directamente (temporal):
 if not url:
-    url = "https://xxxxx.supabase.co"  # Reemplaza con tu URL real
+    url = "https://varzqeadiamaebptfvgl.supabase.co"  # Reemplaza con tu URL real
 if not key:
-    key = "eyJhbGciOi..."  # Reemplaza con tu ANON_KEY real
+    key = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZhcnpxZWFkaWFtYWVicHRmdmdsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0ODExMDYsImV4cCI6MjA5NTA1NzEwNn0.ziIh2Bq5JaHobfVMldNHeZZbtgvIIQmyakaUtSv7SyM"  # Reemplaza con tu ANON_KEY real
 
 print(f"URL: {url}")
 print(f"KEY: {key[:20]}...")

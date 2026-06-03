@@ -1,0 +1,1170 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>GuardIA — Control de Acceso Residencial Inteligente</title>
+  <meta name="description" content="Gestión moderna de visitantes para residenciales y condominios en Guatemala. Push notifications, auditoría inmutable, cero SMS."/>
+  <meta name="theme-color" content="#F97316"/>
+  <meta property="og:title" content="GuardIA — Control de Acceso Inteligente"/>
+  <meta property="og:description" content="Reemplaza WhatsApp y SMS. Push notifications nativas, auditoría con hash chain, 3 roles."/>
+  <meta property="og:type" content="website"/>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700;9..144,900&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --orange: #F97316;
+      --orange-dark: #C2570A;
+      --orange-light: #FED7AA;
+      --black: #0A0A0C;
+      --dark: #111114;
+      --card-dark: #18181B;
+      --border-dark: #2A2A2F;
+      --white: #FAFAF9;
+      --stone: #78716C;
+      --green: #22C55E;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body { font-family: 'Inter', sans-serif; background: var(--white); color: var(--black); overflow-x: hidden; }
+    .font-display { font-family: 'Fraunces', serif; }
+    .font-mono { font-family: 'JetBrains Mono', monospace; }
+
+    /* ── ANIMATIONS ─────────────────────────────────── */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(28px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to   { opacity: 1; }
+    }
+    @keyframes float {
+      0%, 100% { transform: translateY(0px); }
+      50%       { transform: translateY(-10px); }
+    }
+    @keyframes pulse-ring {
+      0%   { transform: scale(1);   opacity: .6; }
+      100% { transform: scale(1.6); opacity: 0; }
+    }
+    @keyframes shimmer {
+      from { background-position: -200% center; }
+      to   { background-position: 200% center; }
+    }
+    .animate-up  { animation: fadeUp .7s ease both; }
+    .animate-in  { animation: fadeIn .9s ease both; }
+    .delay-1 { animation-delay: .1s; }
+    .delay-2 { animation-delay: .2s; }
+    .delay-3 { animation-delay: .35s; }
+    .delay-4 { animation-delay: .5s; }
+    .delay-5 { animation-delay: .65s; }
+    .float { animation: float 4s ease-in-out infinite; }
+
+    /* ── NAVBAR ─────────────────────────────────────── */
+    nav {
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(10,10,12,.85);
+      backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border-dark);
+    }
+    .nav-inner {
+      max-width: 1100px; margin: 0 auto;
+      padding: 0 24px;
+      height: 60px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .logo { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+    .logo-text { font-family: 'Fraunces', serif; font-size: 20px; font-weight: 700; color: var(--white); letter-spacing: -.3px; }
+    .nav-links { display: flex; gap: 28px; list-style: none; }
+    .nav-links a { color: #AAA; text-decoration: none; font-size: 14px; font-weight: 500; transition: color .2s; }
+    .nav-links a:hover { color: var(--white); }
+    .nav-cta {
+      background: var(--orange); color: var(--black);
+      padding: 8px 20px; border-radius: 8px;
+      font-size: 14px; font-weight: 700; text-decoration: none;
+      transition: background .2s, transform .15s;
+    }
+    .nav-cta:hover { background: #EA6A0A; transform: translateY(-1px); }
+    @media (max-width: 768px) { .nav-links { display: none; } }
+
+    /* ── HERO ────────────────────────────────────────── */
+    .hero {
+      background: var(--black);
+      min-height: 92vh;
+      display: flex; align-items: center;
+      position: relative; overflow: hidden;
+      padding: 80px 24px 60px;
+    }
+    .hero-glow-1 {
+      position: absolute; top: -100px; right: -80px;
+      width: 500px; height: 500px;
+      background: radial-gradient(circle, rgba(249,115,22,.25) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .hero-glow-2 {
+      position: absolute; bottom: -120px; left: -100px;
+      width: 400px; height: 400px;
+      background: radial-gradient(circle, rgba(249,115,22,.10) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .hero-grid {
+      position: absolute; inset: 0;
+      background-image: linear-gradient(rgba(249,115,22,.04) 1px, transparent 1px),
+                        linear-gradient(90deg, rgba(249,115,22,.04) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+    }
+    .hero-inner {
+      max-width: 1100px; margin: 0 auto; width: 100%;
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 60px; align-items: center;
+      position: relative; z-index: 1;
+    }
+    @media (max-width: 900px) {
+      .hero-inner { grid-template-columns: 1fr; }
+      .hero-right { display: none; }
+    }
+    .hero-badge {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: rgba(249,115,22,.15); border: 1px solid rgba(249,115,22,.3);
+      color: var(--orange); padding: 6px 14px; border-radius: 100px;
+      font-size: 12px; font-family: 'JetBrains Mono', monospace; font-weight: 700;
+      letter-spacing: .5px; margin-bottom: 28px;
+    }
+    .hero-badge-dot {
+      width: 6px; height: 6px; border-radius: 50%; background: var(--green);
+      position: relative;
+    }
+    .hero-badge-dot::after {
+      content: ''; position: absolute; inset: -3px; border-radius: 50%;
+      background: var(--green); animation: pulse-ring 1.5s ease-out infinite;
+    }
+    .hero-title {
+      font-family: 'Fraunces', serif;
+      font-size: clamp(42px, 5vw, 64px);
+      font-weight: 900; line-height: 1.07;
+      color: var(--white); margin-bottom: 20px;
+      letter-spacing: -.5px;
+    }
+    .hero-title em { color: var(--orange); font-style: normal; }
+    .hero-sub {
+      font-size: 18px; line-height: 1.65;
+      color: #999; max-width: 460px;
+      margin-bottom: 40px;
+    }
+    .hero-ctas { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 48px; }
+    .btn-primary {
+      background: var(--orange); color: var(--black);
+      padding: 14px 28px; border-radius: 10px;
+      font-size: 16px; font-weight: 700; text-decoration: none;
+      display: inline-flex; align-items: center; gap: 8px;
+      transition: background .2s, transform .15s, box-shadow .2s;
+      box-shadow: 0 0 0 0 rgba(249,115,22,0);
+    }
+    .btn-primary:hover {
+      background: #EA6A0A; transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(249,115,22,.35);
+    }
+    .btn-outline {
+      background: transparent; color: var(--white);
+      padding: 14px 28px; border-radius: 10px;
+      font-size: 16px; font-weight: 600; text-decoration: none;
+      border: 1.5px solid var(--border-dark);
+      transition: border-color .2s, background .2s;
+    }
+    .btn-outline:hover { border-color: #555; background: rgba(255,255,255,.04); }
+    .hero-stats {
+      display: flex; gap: 32px; flex-wrap: wrap;
+      padding-top: 32px; border-top: 1px solid var(--border-dark);
+    }
+    .hero-stat-val {
+      font-family: 'Fraunces', serif; font-size: 28px; font-weight: 700;
+      color: var(--white);
+    }
+    .hero-stat-label { font-size: 12px; color: #666; margin-top: 2px; }
+
+    /* ── TRUSTED BAR ─────────────────────────────────── */
+    .trusted-bar {
+      background: #F5F4F0; border-top: 1px solid #E7E5E4; border-bottom: 1px solid #E7E5E4;
+      padding: 20px 24px;
+    }
+    .trusted-inner {
+      max-width: 1100px; margin: 0 auto;
+      display: flex; align-items: center; gap: 32px; flex-wrap: wrap;
+      justify-content: center;
+    }
+    .trusted-label { font-size: 12px; color: #999; font-weight: 600; letter-spacing: .5px; text-transform: uppercase; white-space: nowrap; }
+    .trusted-pills { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; justify-content: center; }
+    .trusted-pill {
+      background: white; border: 1px solid #E7E5E4; border-radius: 100px;
+      padding: 6px 16px; font-size: 13px; font-weight: 600; color: #555;
+      display: flex; align-items: center; gap-6px;
+    }
+
+    /* ── SECTION HEADER ──────────────────────────────── */
+    .section-tag {
+      font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 700;
+      color: var(--orange); letter-spacing: 1.5px; text-transform: uppercase;
+      display: block; margin-bottom: 12px;
+    }
+    .section-title {
+      font-family: 'Fraunces', serif; font-size: clamp(30px, 3.5vw, 44px);
+      font-weight: 700; letter-spacing: -.3px; line-height: 1.15;
+    }
+    .section-sub { font-size: 17px; color: var(--stone); line-height: 1.65; margin-top: 12px; }
+
+    /* ── COMO FUNCIONA ───────────────────────────────── */
+    .how-section { padding: 100px 24px; background: var(--white); }
+    .how-inner { max-width: 1100px; margin: 0 auto; }
+    .steps-grid {
+      display: grid; grid-template-columns: repeat(4, 1fr);
+      gap: 2px; margin-top: 64px;
+    }
+    @media (max-width: 900px) { .steps-grid { grid-template-columns: 1fr 1fr; } }
+    @media (max-width: 600px) { .steps-grid { grid-template-columns: 1fr; } }
+    .step-card {
+      padding: 36px 28px; background: #FAFAF9; border: 1px solid #E7E5E4;
+      position: relative; transition: box-shadow .2s, transform .2s;
+    }
+    .step-card:hover { box-shadow: 0 8px 32px rgba(0,0,0,.08); transform: translateY(-3px); }
+    .step-card:first-child { border-radius: 20px 0 0 20px; }
+    .step-card:last-child  { border-radius: 0 20px 20px 0; }
+    @media (max-width: 900px) {
+      .step-card:first-child { border-radius: 20px 0 0 0; }
+      .step-card:last-child  { border-radius: 0 0 20px 0; }
+    }
+    .step-num {
+      font-family: 'Fraunces', serif; font-size: 56px; font-weight: 900;
+      color: #F0EDE8; line-height: 1; margin-bottom: 20px;
+    }
+    .step-icon {
+      width: 48px; height: 48px; border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      margin-bottom: 16px;
+    }
+    .step-title { font-size: 17px; font-weight: 700; margin-bottom: 10px; }
+    .step-desc { font-size: 14px; color: var(--stone); line-height: 1.6; }
+    .step-role {
+      margin-top: 20px; font-size: 11px; font-family: 'JetBrains Mono', monospace;
+      font-weight: 700; letter-spacing: 1px;
+      padding: 4px 10px; border-radius: 100px; display: inline-block;
+    }
+
+    /* ── GARITA SCENE ────────────────────────────────── */
+    .scene-section {
+      background: var(--black); padding: 80px 24px;
+      overflow: hidden; position: relative;
+    }
+    .scene-inner {
+      max-width: 1100px; margin: 0 auto;
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 64px; align-items: center;
+    }
+    @media (max-width: 900px) { .scene-inner { grid-template-columns: 1fr; } }
+    .scene-copy .section-title { color: var(--white); }
+    .scene-copy .section-sub { color: #888; }
+    .scene-features { list-style: none; margin-top: 32px; display: flex; flex-direction: column; gap: 16px; }
+    .scene-feat {
+      display: flex; gap: 14px; align-items: flex-start;
+    }
+    .scene-feat-icon {
+      width: 36px; height: 36px; background: rgba(249,115,22,.15);
+      border-radius: 8px; display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .scene-feat-title { font-size: 14px; font-weight: 700; color: var(--white); margin-bottom: 4px; }
+    .scene-feat-desc  { font-size: 13px; color: #777; line-height: 1.5; }
+
+    /* ── FEATURES GRID ───────────────────────────────── */
+    .features-section { padding: 100px 24px; background: #F7F6F2; }
+    .features-inner { max-width: 1100px; margin: 0 auto; }
+    .features-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr);
+      gap: 20px; margin-top: 64px;
+    }
+    @media (max-width: 900px) { .features-grid { grid-template-columns: 1fr 1fr; } }
+    @media (max-width: 580px) { .features-grid { grid-template-columns: 1fr; } }
+    .feat-card {
+      background: white; border: 1px solid #E7E5E4; border-radius: 16px;
+      padding: 32px; transition: border-color .2s, box-shadow .2s, transform .2s;
+    }
+    .feat-card:hover {
+      border-color: var(--orange); box-shadow: 0 8px 32px rgba(249,115,22,.1);
+      transform: translateY(-4px);
+    }
+    .feat-icon {
+      width: 52px; height: 52px; border-radius: 14px;
+      display: flex; align-items: center; justify-content: center;
+      margin-bottom: 20px;
+    }
+    .feat-title { font-size: 17px; font-weight: 700; margin-bottom: 10px; }
+    .feat-desc { font-size: 14px; color: var(--stone); line-height: 1.65; }
+
+    /* ── PRICING ─────────────────────────────────────── */
+    .pricing-section { padding: 100px 24px; background: white; }
+    .pricing-inner { max-width: 1000px; margin: 0 auto; }
+    .pricing-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr);
+      gap: 24px; margin-top: 64px; align-items: start;
+    }
+    @media (max-width: 800px) { .pricing-grid { grid-template-columns: 1fr; max-width: 420px; } }
+    .price-card {
+      border: 1.5px solid #E7E5E4; border-radius: 20px;
+      padding: 36px 32px; position: relative;
+      transition: box-shadow .2s, transform .2s;
+    }
+    .price-card:hover { box-shadow: 0 12px 40px rgba(0,0,0,.08); transform: translateY(-4px); }
+    .price-card.popular {
+      border-color: var(--orange);
+      box-shadow: 0 0 0 4px rgba(249,115,22,.08);
+    }
+    .popular-badge {
+      position: absolute; top: -13px; left: 50%; transform: translateX(-50%);
+      background: var(--orange); color: var(--black);
+      font-size: 11px; font-family: 'JetBrains Mono', monospace; font-weight: 700;
+      padding: 4px 14px; border-radius: 100px; letter-spacing: .5px; white-space: nowrap;
+    }
+    .plan-name { font-size: 12px; font-family: 'JetBrains Mono', monospace; font-weight: 700; color: var(--orange); letter-spacing: 1px; margin-bottom: 12px; }
+    .plan-price { font-family: 'Fraunces', serif; font-size: 38px; font-weight: 700; line-height: 1; }
+    .plan-price span { font-size: 18px; font-weight: 400; color: var(--stone); }
+    .plan-usd { font-size: 13px; color: #AAA; margin-top: 4px; margin-bottom: 6px; }
+    .plan-limit { font-size: 13px; color: var(--stone); margin-bottom: 28px; padding-bottom: 20px; border-bottom: 1px solid #F0EDE8; }
+    .plan-features { list-style: none; display: flex; flex-direction: column; gap: 12px; margin-bottom: 28px; }
+    .plan-feat { display: flex; align-items: flex-start; gap: 10px; font-size: 14px; color: #444; }
+    .check { color: var(--orange); flex-shrink: 0; margin-top: 1px; }
+    .btn-plan {
+      display: block; width: 100%; text-align: center;
+      padding: 12px; border-radius: 10px;
+      font-size: 15px; font-weight: 700; text-decoration: none;
+      transition: all .2s;
+    }
+    .btn-plan-outline { border: 1.5px solid #DDD; color: var(--black); }
+    .btn-plan-outline:hover { border-color: var(--orange); color: var(--orange); background: rgba(249,115,22,.04); }
+    .btn-plan-filled { background: var(--orange); color: var(--black); }
+    .btn-plan-filled:hover { background: #EA6A0A; box-shadow: 0 6px 20px rgba(249,115,22,.3); }
+
+    /* ── CTA ─────────────────────────────────────────── */
+    .cta-section {
+      background: var(--black); padding: 100px 24px;
+      text-align: center; position: relative; overflow: hidden;
+    }
+    .cta-glow {
+      position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
+      width: 600px; height: 300px;
+      background: radial-gradient(ellipse, rgba(249,115,22,.18) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .cta-inner { max-width: 640px; margin: 0 auto; position: relative; z-index: 1; }
+    .cta-title { font-family: 'Fraunces', serif; font-size: clamp(32px, 4vw, 52px); font-weight: 700; color: var(--white); margin-bottom: 16px; line-height: 1.15; }
+    .cta-sub { font-size: 17px; color: #777; margin-bottom: 40px; line-height: 1.6; }
+    .cta-btns { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
+
+    /* ── FOOTER ──────────────────────────────────────── */
+    footer {
+      background: var(--dark); border-top: 1px solid var(--border-dark);
+      padding: 60px 24px 32px;
+    }
+    .footer-inner { max-width: 1100px; margin: 0 auto; }
+    .footer-grid {
+      display: grid; grid-template-columns: 2fr 1fr 1fr 1fr;
+      gap: 48px; margin-bottom: 48px;
+    }
+    @media (max-width: 700px) { .footer-grid { grid-template-columns: 1fr 1fr; } }
+    .footer-logo-text { font-family: 'Fraunces', serif; font-size: 18px; font-weight: 700; color: var(--white); margin-bottom: 8px; }
+    .footer-desc { font-size: 13px; color: #666; line-height: 1.65; max-width: 240px; }
+    .footer-col-title { font-size: 12px; font-weight: 700; color: #AAA; letter-spacing: .5px; text-transform: uppercase; margin-bottom: 16px; }
+    .footer-links { list-style: none; display: flex; flex-direction: column; gap: 10px; }
+    .footer-links a { font-size: 13px; color: #666; text-decoration: none; transition: color .2s; }
+    .footer-links a:hover { color: var(--orange); }
+    .footer-bottom { border-top: 1px solid var(--border-dark); padding-top: 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
+    .footer-copy { font-size: 13px; color: #555; }
+    .footer-flag { display: flex; align-items: center; gap: 6px; font-size: 13px; color: #555; }
+
+    /* ── SCROLL REVEAL ───────────────────────────────── */
+    .reveal {
+      opacity: 0; transform: translateY(24px);
+      transition: opacity .65s ease, transform .65s ease;
+    }
+    .reveal.visible { opacity: 1; transform: translateY(0); }
+  </style>
+</head>
+<body>
+
+<!-- NAVBAR -->
+<nav>
+  <div class="nav-inner">
+    <a href="/" class="logo">
+      <img src="guardia-logo.png" alt="GuardIA" style="height:44px; width:44px; object-fit:cover; border-radius:8px;"/>
+      <span class="logo-text">GuardIA</span>
+    </a>
+    <ul class="nav-links">
+      <li><a href="#como-funciona">Cómo funciona</a></li>
+      <li><a href="#features">Features</a></li>
+      <li><a href="#pricing">Precios</a></li>
+    </ul>
+    <a href="#demo" class="nav-cta">Solicitar Demo</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-grid"></div>
+  <div class="hero-glow-1"></div>
+  <div class="hero-glow-2"></div>
+  <div class="hero-inner">
+
+    <!-- Left copy -->
+    <div class="hero-left">
+      <div class="hero-badge animate-up delay-1">
+        <span class="hero-badge-dot"></span>
+        ● CONTROL DE INGRESO DE VISITAS · GT 2026
+      </div>
+      <h1 class="hero-title animate-up delay-2">
+        Tu residencial,<br/><em>bajo control.</em>
+      </h1>
+      <p class="hero-sub animate-up delay-3">
+        Reemplaza WhatsApp y SMS. Push notifications nativas, auditoría inmutable y control de acceso en tiempo real para condominios y residenciales.
+      </p>
+      <div class="hero-ctas animate-up delay-4">
+        <a href="#como-funciona" class="btn-primary">
+          <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path d="M5 3l14 9-14 9V3z"/></svg>
+          Ver demo
+        </a>
+        <a href="#pricing" class="btn-outline">Ver planes →</a>
+      </div>
+      <div class="hero-stats animate-up delay-5">
+        <div>
+          <div class="hero-stat-val">< 30s</div>
+          <div class="hero-stat-label">registro de visita</div>
+        </div>
+        <div>
+          <div class="hero-stat-val">Q 750</div>
+          <div class="hero-stat-label">desde / mes</div>
+        </div>
+        <div>
+          <div class="hero-stat-val">3</div>
+          <div class="hero-stat-label">roles cubiertos</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right: Garita illustration + phone -->
+    <div class="hero-right animate-in delay-3">
+      <svg width="520" height="440" viewBox="0 0 520 440" fill="none" xmlns="http://www.w3.org/2000/svg" class="float">
+
+        <!-- Sky gradient background -->
+        <defs>
+          <linearGradient id="sky" x1="260" y1="0" x2="260" y2="300" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#0D1929"/>
+            <stop offset="100%" stop-color="#1A2A40"/>
+          </linearGradient>
+          <linearGradient id="ground" x1="260" y1="300" x2="260" y2="440" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#1C1F24"/>
+            <stop offset="100%" stop-color="#141518"/>
+          </linearGradient>
+          <linearGradient id="booth" x1="220" y1="200" x2="220" y2="380" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#2A2D35"/>
+            <stop offset="100%" stop-color="#1E2128"/>
+          </linearGradient>
+          <linearGradient id="orangeGlow" x1="260" y1="200" x2="260" y2="440" gradientUnits="userSpaceOnUse">
+            <stop offset="0%" stop-color="#F97316" stop-opacity=".25"/>
+            <stop offset="100%" stop-color="#F97316" stop-opacity="0"/>
+          </linearGradient>
+          <filter id="glow">
+            <feGaussianBlur stdDeviation="3" result="blur"/>
+            <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+          </filter>
+          <filter id="softglow">
+            <feGaussianBlur stdDeviation="8" result="blur"/>
+            <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+          </filter>
+        </defs>
+
+        <!-- Sky -->
+        <rect width="520" height="320" fill="url(#sky)" rx="20"/>
+        <!-- Stars -->
+        <circle cx="60"  cy="40" r="1.2" fill="white" opacity=".6"/>
+        <circle cx="120" cy="25" r="1"   fill="white" opacity=".4"/>
+        <circle cx="200" cy="55" r="1.5" fill="white" opacity=".5"/>
+        <circle cx="340" cy="30" r="1"   fill="white" opacity=".4"/>
+        <circle cx="420" cy="50" r="1.2" fill="white" opacity=".6"/>
+        <circle cx="480" cy="20" r="1"   fill="white" opacity=".3"/>
+        <circle cx="380" cy="70" r="1.5" fill="white" opacity=".5"/>
+        <circle cx="30"  cy="90" r="1"   fill="white" opacity=".3"/>
+
+        <!-- Distant buildings silhouette -->
+        <rect x="30"  y="220" width="40" height="80" fill="#121820" rx="3"/>
+        <rect x="40"  y="200" width="20" height="20" fill="#121820" rx="2"/>
+        <rect x="75"  y="230" width="30" height="70" fill="#121820" rx="2"/>
+        <rect x="410" y="215" width="50" height="85" fill="#121820" rx="3"/>
+        <rect x="420" y="195" width="30" height="20" fill="#121820" rx="2"/>
+        <rect x="460" y="225" width="35" height="75" fill="#121820" rx="2"/>
+        <!-- Building windows -->
+        <rect x="35"  y="230" width="8" height="6" fill="#F97316" opacity=".4" rx="1"/>
+        <rect x="48"  y="230" width="8" height="6" fill="#F97316" opacity=".2" rx="1"/>
+        <rect x="35"  y="243" width="8" height="6" fill="white" opacity=".1" rx="1"/>
+        <rect x="414" y="225" width="8" height="6" fill="#F97316" opacity=".3" rx="1"/>
+        <rect x="428" y="225" width="8" height="6" fill="white" opacity=".1" rx="1"/>
+        <rect x="414" y="238" width="8" height="6" fill="#F97316" opacity=".4" rx="1"/>
+
+        <!-- Ground -->
+        <rect x="0" y="300" width="520" height="140" fill="url(#ground)" rx="0"/>
+        <!-- Road / driveway -->
+        <rect x="0" y="300" width="520" height="140" fill="#17191E"/>
+        <rect x="190" y="300" width="140" height="140" fill="#1C1F24"/>
+        <!-- Road markings -->
+        <rect x="253" y="305" width="14" height="30" fill="#3A3D45" rx="2"/>
+        <rect x="253" y="345" width="14" height="30" fill="#3A3D45" rx="2"/>
+        <rect x="253" y="385" width="14" height="30" fill="#3A3D45" rx="2"/>
+        <!-- Orange glow on ground from lights -->
+        <ellipse cx="260" cy="310" rx="120" ry="30" fill="#F97316" opacity=".12"/>
+        <!-- Ground light stripes -->
+        <line x1="140" y1="308" x2="100" y2="440" stroke="#F97316" stroke-width="1" opacity=".08"/>
+        <line x1="380" y1="308" x2="420" y2="440" stroke="#F97316" stroke-width="1" opacity=".08"/>
+
+        <!-- ── GARITA BOOTH ── -->
+        <!-- Booth base/foundation -->
+        <rect x="150" y="290" width="140" height="110" rx="4" fill="url(#booth)"/>
+        <!-- Booth roof -->
+        <path d="M140 205 L370 205 L360 225 L150 225 Z" fill="#22262E"/>
+        <!-- Roof accent strip -->
+        <rect x="140" y="200" width="230" height="8" rx="3" fill="#F97316"/>
+        <!-- Booth walls -->
+        <rect x="150" y="220" width="220" height="80" fill="#252830"/>
+        <!-- Booth window (large) -->
+        <rect x="240" y="228" width="110" height="55" rx="4" fill="#1A2235"/>
+        <!-- Window glass sheen -->
+        <path d="M242 230 L348 230 L348 235 L242 235 Z" fill="white" opacity=".06"/>
+        <path d="M242 230 L255 283 L242 283 Z" fill="white" opacity=".04"/>
+        <!-- Window frame -->
+        <rect x="240" y="228" width="110" height="55" rx="4" fill="none" stroke="#3A4050" stroke-width="1.5"/>
+        <!-- Door -->
+        <rect x="158" y="248" width="48" height="52" rx="3" fill="#1E2128"/>
+        <rect x="158" y="248" width="48" height="52" rx="3" fill="none" stroke="#333" stroke-width="1"/>
+        <circle cx="198" cy="275" r="4" fill="#F97316" opacity=".8"/>
+        <!-- Logo on booth -->
+        <rect x="162" y="230" width="40" height="16" rx="4" fill="#F97316" opacity=".9"/>
+        <text x="182" y="242" fill="#0A0A0C" font-size="8" font-weight="800" text-anchor="middle" font-family="serif">GuardIA</text>
+
+        <!-- ── SECURITY GUARD ── -->
+        <!-- Guard standing at counter, viewed from outside -->
+        <!-- Body/uniform - dark blue -->
+        <rect x="270" y="240" width="38" height="38" rx="4" fill="#1E2A42"/>
+        <!-- Uniform details -->
+        <rect x="284" y="242" width="10" height="14" rx="2" fill="#F97316" opacity=".8"/>
+        <!-- Head -->
+        <circle cx="289" cy="238" r="13" fill="#C68642"/>
+        <!-- Hat -->
+        <rect x="275" y="225" width="28" height="8" rx="3" fill="#1A2235"/>
+        <rect x="272" y="231" width="34" height="4" rx="2" fill="#1A2235"/>
+        <!-- Hat badge -->
+        <circle cx="289" cy="228" r="4" fill="#F97316"/>
+        <!-- Face features -->
+        <circle cx="285" cy="237" r="2" fill="#0A0A0C" opacity=".5"/>
+        <circle cx="293" cy="237" r="2" fill="#0A0A0C" opacity=".5"/>
+        <path d="M284 244 Q289 247 294 244" stroke="#0A0A0C" stroke-width="1.5" fill="none" opacity=".4"/>
+        <!-- Arm holding tablet -->
+        <rect x="262" y="250" width="14" height="8" rx="3" fill="#C68642"/>
+        <!-- Tablet -->
+        <rect x="246" y="240" width="22" height="30" rx="3" fill="#1A2235"/>
+        <rect x="246" y="240" width="22" height="30" rx="3" fill="none" stroke="#F97316" stroke-width="1.5"/>
+        <!-- Tablet screen - app UI -->
+        <rect x="248" y="242" width="18" height="26" rx="2" fill="#0D1929"/>
+        <!-- App header on tablet -->
+        <rect x="248" y="242" width="18" height="7" rx="2" fill="#F97316" opacity=".9"/>
+        <!-- Small person icon on tablet -->
+        <circle cx="254" cy="259" r="3" fill="#22C55E"/>
+        <rect x="260" y="256" width="5" height="1.5" rx="1" fill="#22C55E"/>
+        <rect x="260" y="259" width="4" height="1.5" rx="1" fill="#666"/>
+        <rect x="260" y="262" width="5" height="1.5" rx="1" fill="#666"/>
+
+        <!-- ── BARRIER / PLUMA ── -->
+        <!-- Left barrier post -->
+        <rect x="138" y="280" width="12" height="60" rx="4" fill="#2A2D35"/>
+        <rect x="138" y="275" width="12" height="10" rx="3" fill="#F97316"/>
+        <!-- Barrier arm (raised) -->
+        <rect x="149" y="275" width="80" height="7" rx="3.5" fill="#F97316"/>
+        <!-- Barrier stripes -->
+        <rect x="165" y="275" width="8"  height="7" rx="1" fill="#0A0A0C" opacity=".5"/>
+        <rect x="185" y="275" width="8"  height="7" rx="1" fill="#0A0A0C" opacity=".5"/>
+        <rect x="205" y="275" width="8"  height="7" rx="1" fill="#0A0A0C" opacity=".5"/>
+        <!-- Right barrier post -->
+        <rect x="370" y="280" width="12" height="60" rx="4" fill="#2A2D35"/>
+        <rect x="370" y="275" width="12" height="10" rx="3" fill="#F97316"/>
+        <!-- Right barrier arm (raised) -->
+        <rect x="291" y="275" width="80" height="7" rx="3.5" fill="#F97316"/>
+        <rect x="305" y="275" width="8"  height="7" rx="1" fill="#0A0A0C" opacity=".5"/>
+        <rect x="325" y="275" width="8"  height="7" rx="1" fill="#0A0A0C" opacity=".5"/>
+        <rect x="345" y="275" width="8"  height="7" rx="1" fill="#0A0A0C" opacity=".5"/>
+
+        <!-- ── PERIMETER WALL ── -->
+        <!-- Left wall -->
+        <rect x="0" y="260" width="145" height="20" rx="0" fill="#1E2128"/>
+        <rect x="0" y="256" width="145" height="6" rx="0" fill="#2A2D35"/>
+        <!-- Wall coping tops (decorative) -->
+        <rect x="10" y="250" width="18" height="8" rx="2" fill="#252830"/>
+        <rect x="38" y="250" width="18" height="8" rx="2" fill="#252830"/>
+        <rect x="66" y="250" width="18" height="8" rx="2" fill="#252830"/>
+        <rect x="94" y="250" width="18" height="8" rx="2" fill="#252830"/>
+        <rect x="120" y="250" width="18" height="8" rx="2" fill="#252830"/>
+        <!-- Right wall -->
+        <rect x="375" y="260" width="145" height="20" rx="0" fill="#1E2128"/>
+        <rect x="375" y="256" width="145" height="6" rx="0" fill="#2A2D35"/>
+        <rect x="380" y="250" width="18" height="8" rx="2" fill="#252830"/>
+        <rect x="408" y="250" width="18" height="8" rx="2" fill="#252830"/>
+        <rect x="436" y="250" width="18" height="8" rx="2" fill="#252830"/>
+        <rect x="464" y="250" width="18" height="8" rx="2" fill="#252830"/>
+        <rect x="492" y="250" width="18" height="8" rx="2" fill="#252830"/>
+
+        <!-- ── PALM TREES ── -->
+        <!-- Left palm -->
+        <line x1="90" y1="260" x2="85" y2="150" stroke="#2A3020" stroke-width="7" stroke-linecap="round"/>
+        <line x1="85" y1="150" x2="50" y2="120" stroke="#3A4028" stroke-width="5" stroke-linecap="round"/>
+        <line x1="85" y1="150" x2="120" y2="115" stroke="#3A4028" stroke-width="5" stroke-linecap="round"/>
+        <line x1="85" y1="150" x2="70" y2="108" stroke="#3A4028" stroke-width="4" stroke-linecap="round"/>
+        <line x1="85" y1="150" x2="100" y2="130" stroke="#3A4028" stroke-width="4" stroke-linecap="round"/>
+        <!-- Palm fronds -->
+        <ellipse cx="45" cy="115" rx="20" ry="6" fill="#2D3A1E" transform="rotate(-30 45 115)"/>
+        <ellipse cx="124" cy="110" rx="20" ry="6" fill="#2D3A1E" transform="rotate(25 124 110)"/>
+        <ellipse cx="68" cy="102" rx="18" ry="5" fill="#2D3A1E" transform="rotate(-55 68 102)"/>
+        <ellipse cx="103" cy="125" rx="16" ry="5" fill="#2D3A1E" transform="rotate(10 103 125)"/>
+        <!-- Right palm -->
+        <line x1="430" y1="260" x2="435" y2="145" stroke="#2A3020" stroke-width="7" stroke-linecap="round"/>
+        <line x1="435" y1="145" x2="400" y2="115" stroke="#3A4028" stroke-width="5" stroke-linecap="round"/>
+        <line x1="435" y1="145" x2="470" y2="120" stroke="#3A4028" stroke-width="5" stroke-linecap="round"/>
+        <line x1="435" y1="145" x2="450" y2="108" stroke="#3A4028" stroke-width="4" stroke-linecap="round"/>
+        <line x1="435" y1="145" x2="415" y2="130" stroke="#3A4028" stroke-width="4" stroke-linecap="round"/>
+        <ellipse cx="396" cy="110" rx="20" ry="6" fill="#2D3A1E" transform="rotate(30 396 110)"/>
+        <ellipse cx="474" cy="115" rx="20" ry="6" fill="#2D3A1E" transform="rotate(-25 474 115)"/>
+        <ellipse cx="452" cy="103" rx="18" ry="5" fill="#2D3A1E" transform="rotate(55 452 103)"/>
+        <ellipse cx="416" cy="125" rx="16" ry="5" fill="#2D3A1E" transform="rotate(-10 416 125)"/>
+
+        <!-- ── LIGHTS ── -->
+        <!-- Booth roof light left -->
+        <circle cx="155" cy="205" r="5" fill="#F97316" filter="url(#glow)"/>
+        <circle cx="155" cy="205" r="12" fill="#F97316" opacity=".15"/>
+        <!-- Booth roof light right -->
+        <circle cx="365" cy="205" r="5" fill="#F97316" filter="url(#glow)"/>
+        <circle cx="365" cy="205" r="12" fill="#F97316" opacity=".15"/>
+        <!-- Ground lights -->
+        <circle cx="144" cy="295" r="6" fill="#F97316" opacity=".5"/>
+        <circle cx="376" cy="295" r="6" fill="#F97316" opacity=".5"/>
+
+        <!-- ── APPROACHING CAR ── -->
+        <rect x="195" y="380" width="130" height="50" rx="10" fill="#1E2D4A"/>
+        <rect x="205" y="368" width="110" height="24" rx="8" fill="#253550"/>
+        <!-- Car windows -->
+        <rect x="212" y="372" width="42" height="16" rx="4" fill="#1A2235" opacity=".9"/>
+        <rect x="262" y="372" width="42" height="16" rx="4" fill="#1A2235" opacity=".9"/>
+        <!-- Headlights -->
+        <circle cx="200" cy="410" r="7" fill="#FDE68A" opacity=".9" filter="url(#glow)"/>
+        <circle cx="320" cy="410" r="7" fill="#FDE68A" opacity=".9" filter="url(#glow)"/>
+        <!-- Headlight beams -->
+        <path d="M193 410 L100 430 L100 440 L193 420 Z" fill="#FDE68A" opacity=".05"/>
+        <path d="M327 410 L420 430 L420 440 L327 420 Z" fill="#FDE68A" opacity=".05"/>
+        <!-- Taillights -->
+        <circle cx="205" cy="424" r="5" fill="#EF4444" opacity=".6"/>
+        <circle cx="315" cy="424" r="5" fill="#EF4444" opacity=".6"/>
+        <!-- Wheels -->
+        <circle cx="220" cy="430" r="10" fill="#0A0A0C"/>
+        <circle cx="220" cy="430" r="5" fill="#2A2D35"/>
+        <circle cx="300" cy="430" r="10" fill="#0A0A0C"/>
+        <circle cx="300" cy="430" r="5" fill="#2A2D35"/>
+
+        <!-- ── NOTIFICATION BUBBLE ── -->
+        <!-- Floating notification coming from tablet -->
+        <rect x="310" y="210" width="160" height="52" rx="12" fill="#0D1929" stroke="#F97316" stroke-width="1.5"/>
+        <rect x="310" y="210" width="160" height="52" rx="12" fill="rgba(249,115,22,.06)"/>
+        <!-- App icon in notif -->
+        <rect x="320" y="219" width="18" height="18" rx="5" fill="#F97316"/>
+        <text x="329" y="231" fill="#0A0A0C" font-size="9" font-weight="800" text-anchor="middle" font-family="serif">G</text>
+        <text x="345" y="226" fill="white" font-size="8.5" font-weight="700" font-family="Inter,sans-serif">GuardIA</text>
+        <text x="345" y="237" fill="#F97316" font-size="7" font-family="Inter,sans-serif">Visita autorizada</text>
+        <text x="320" y="250" fill="#DDD" font-size="8" font-weight="600" font-family="Inter,sans-serif">Carolina M. · Casa 12</text>
+        <text x="320" y="260" fill="#888" font-size="7" font-family="Inter,sans-serif">Moto P-512GHT · hace 1s</text>
+        <!-- Bubble tail -->
+        <path d="M326 262 L318 270 L336 262 Z" fill="#0D1929"/>
+        <path d="M326 262 L318 270" stroke="#F97316" stroke-width="1.5"/>
+        <path d="M336 262 L318 270" stroke="#F97316" stroke-width="0"/>
+
+        <!-- GuardIA watermark bottom -->
+        <text x="260" y="432" fill="#F97316" font-size="8" opacity=".25" text-anchor="middle" font-family="serif" font-weight="700">guardia.app · Control de Ingreso de Visitas</text>
+      </svg>
+    </div>
+  </div>
+</section>
+
+<!-- TRUSTED BAR -->
+<div class="trusted-bar">
+  <div class="trusted-inner">
+    <span class="trusted-label">Para residenciales como</span>
+    <div class="trusted-pills">
+      <span class="trusted-pill">🏡 Condominios</span>
+      <span class="trusted-pill">🏢 Apartamentos</span>
+      <span class="trusted-pill">🌳 Residenciales cerradas</span>
+      <span class="trusted-pill">🏗 Torres de apartamentos</span>
+      <span class="trusted-pill">🏘 Colonias privadas</span>
+    </div>
+  </div>
+</div>
+
+<!-- CÓMO FUNCIONA -->
+<section id="como-funciona" class="how-section">
+  <div class="how-inner">
+    <div class="reveal" style="text-align:center; max-width:560px; margin:0 auto;">
+      <span class="section-tag">FLUJO DE USO</span>
+      <h2 class="section-title">De la autorización a la salida</h2>
+      <p class="section-sub">Todo el ciclo en segundos. Sin WhatsApp, sin SMS, sin llamadas.</p>
+    </div>
+
+    <div class="steps-grid reveal">
+
+      <!-- Step 1 -->
+      <div class="step-card">
+        <div class="step-num">01</div>
+        <div class="step-icon" style="background:#FFF1E6;">
+          <svg width="24" height="24" fill="#F97316" viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+        </div>
+        <div class="step-title">Residente autoriza</div>
+        <div class="step-desc">Abre la app, ingresa nombre y DPI del visitante. Elige día único o recurrente (hasta 30 días). Listo.</div>
+        <span class="step-role" style="background:#FFF1E6; color:#F97316;">RESIDENTE</span>
+      </div>
+
+      <!-- Step 2 -->
+      <div class="step-card">
+        <div class="step-num">02</div>
+        <div class="step-icon" style="background:#1A2235;">
+          <svg width="24" height="24" fill="#F97316" viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/></svg>
+        </div>
+        <div class="step-title">Vigilante verifica</div>
+        <div class="step-desc">Lista de "Esperados" en pantalla. Busca al visitante, captura foto, registra transporte y placa. Confirma entrada.</div>
+        <span class="step-role" style="background:#1A2235; color:#F97316;">VIGILANTE</span>
+      </div>
+
+      <!-- Step 3 -->
+      <div class="step-card">
+        <div class="step-num">03</div>
+        <div class="step-icon" style="background:#FFF1E6;">
+          <svg width="24" height="24" fill="#F97316" viewBox="0 0 24 24"><path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/></svg>
+        </div>
+        <div class="step-title">Residente recibe push</div>
+        <div class="step-desc">Notificación instantánea: nombre, foto, vehículo y hora. El residente sabe quién entró, esté donde esté.</div>
+        <span class="step-role" style="background:#FFF1E6; color:#F97316;">RESIDENTE</span>
+      </div>
+
+      <!-- Step 4 -->
+      <div class="step-card">
+        <div class="step-num">04</div>
+        <div class="step-icon" style="background:#DCFCE7;">
+          <svg width="24" height="24" fill="#16A34A" viewBox="0 0 24 24"><path d="M13 3h-2v10h2V3zm4.83 2.17l-1.42 1.42C17.99 7.86 19 9.81 19 12c0 3.87-3.13 7-7 7s-7-3.13-7-7c0-2.19 1.01-4.14 2.58-5.42L6.17 5.17C4.23 6.82 3 9.26 3 12c0 4.97 4.03 9 9 9s9-4.03 9-9c0-2.74-1.23-5.18-3.17-6.83z"/></svg>
+        </div>
+        <div class="step-title">Vigilante registra salida</div>
+        <div class="step-desc">Tab "Adentro" → un toque cierra la visita. Residente recibe confirmación de salida. Auditoría completa e inmutable.</div>
+        <span class="step-role" style="background:#DCFCE7; color:#16A34A;">VIGILANTE</span>
+      </div>
+
+    </div>
+
+    <!-- Summary stats -->
+    <div class="reveal" style="display:grid; grid-template-columns:repeat(4,1fr); gap:2px; margin-top:24px; background:#E7E5E4; border-radius:16px; overflow:hidden;">
+      <div style="background:#0A0A0C; padding:28px; text-align:center;">
+        <div style="font-family:'Fraunces',serif; font-size:36px; font-weight:700; color:#F97316;">< 30s</div>
+        <div style="font-size:12px; color:#666; margin-top:4px;">tiempo de registro</div>
+      </div>
+      <div style="background:#0A0A0C; padding:28px; text-align:center;">
+        <div style="font-family:'Fraunces',serif; font-size:36px; font-weight:700; color:#F97316;">100%</div>
+        <div style="font-size:12px; color:#666; margin-top:4px;">push, cero SMS</div>
+      </div>
+      <div style="background:#0A0A0C; padding:28px; text-align:center;">
+        <div style="font-family:'Fraunces',serif; font-size:36px; font-weight:700; color:#F97316;">3</div>
+        <div style="font-size:12px; color:#666; margin-top:4px;">roles integrados</div>
+      </div>
+      <div style="background:#0A0A0C; padding:28px; text-align:center;">
+        <div style="font-family:'Fraunces',serif; font-size:36px; font-weight:700; color:#F97316;">∞</div>
+        <div style="font-size:12px; color:#666; margin-top:4px;">historial auditable</div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- SCENE: Guard tablet -->
+<section class="scene-section">
+  <div class="scene-inner">
+    <div class="scene-copy reveal">
+      <span class="section-tag">VISTA VIGILANTE</span>
+      <h2 class="section-title">Todo lo que el vigilante necesita, en una pantalla</h2>
+      <p class="section-sub">Sin llamar al residente. Sin WhatsApp. Sin papel. La información llega sola.</p>
+      <ul class="scene-features">
+        <li class="scene-feat">
+          <div class="scene-feat-icon">
+            <svg width="18" height="18" fill="#F97316" viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+          </div>
+          <div>
+            <div class="scene-feat-title">Lista de Esperados en tiempo real</div>
+            <div class="scene-feat-desc">Autorizaciones activas del día, búsqueda instantánea por nombre o casa.</div>
+          </div>
+        </li>
+        <li class="scene-feat">
+          <div class="scene-feat-icon">
+            <svg width="18" height="18" fill="#F97316" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/></svg>
+          </div>
+          <div>
+            <div class="scene-feat-title">Captura foto del visitante</div>
+            <div class="scene-feat-desc">Foto opcional al ingreso, asociada permanentemente al evento en la bitácora.</div>
+          </div>
+        </li>
+        <li class="scene-feat">
+          <div class="scene-feat-icon">
+            <svg width="18" height="18" fill="#F97316" viewBox="0 0 24 24"><path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99z"/></svg>
+          </div>
+          <div>
+            <div class="scene-feat-title">Registro de transporte y placa</div>
+            <div class="scene-feat-desc">Vehículo, moto, a pie — todo queda en el log de acceso sin esfuerzo extra.</div>
+          </div>
+        </li>
+        <li class="scene-feat">
+          <div class="scene-feat-icon">
+            <svg width="18" height="18" fill="#22C55E" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm3.5-9c.83 0 1.5-.67 1.5-1.5S16.33 7 15.5 7 14 7.67 14 8.5s.67 1.5 1.5 1.5zm-7 0c.83 0 1.5-.67 1.5-1.5S9.33 7 8.5 7 7 7.67 7 8.5 7.67 10 8.5 10zm3.5 6.5c2.33 0 4.31-1.46 5.11-3.5H6.89c.8 2.04 2.78 3.5 5.11 3.5z"/></svg>
+          </div>
+          <div>
+            <div class="scene-feat-title">Tab "Adentro" para gestionar salidas</div>
+            <div class="scene-feat-desc">Un toque registra la salida. Alerta automática al residente. Pase recurrente reabre mañana.</div>
+          </div>
+        </li>
+      </ul>
+    </div>
+
+    <!-- Phone mockup: guard app -->
+    <div class="reveal" style="display:flex; justify-content:center;">
+      <div style="position:relative;">
+        <svg width="260" height="520" viewBox="0 0 260 520" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <clipPath id="screen-clip"><rect x="10" y="18" width="240" height="484" rx="30"/></clipPath>
+          </defs>
+          <!-- Phone shell -->
+          <rect x="0" y="0" width="260" height="520" rx="44" fill="#18181B"/>
+          <rect x="2" y="2" width="256" height="516" rx="42" fill="none" stroke="#3A3A40" stroke-width="2"/>
+          <!-- Side buttons -->
+          <rect x="0" y="130" width="4" height="50" rx="2" fill="#2A2A30"/>
+          <rect x="0" y="190" width="4" height="50" rx="2" fill="#2A2A30"/>
+          <rect x="256" y="150" width="4" height="70" rx="2" fill="#2A2A30"/>
+          <!-- Screen bg -->
+          <rect x="10" y="18" width="240" height="484" rx="30" fill="#F8F7F4"/>
+          <!-- Dynamic island -->
+          <rect x="95" y="24" width="70" height="16" rx="8" fill="#18181B"/>
+          <!-- Status bar -->
+          <text x="26" y="52" font-size="11" fill="#333" font-family="Inter,sans-serif" font-weight="600">9:41</text>
+          <!-- Battery -->
+          <rect x="214" y="44" width="28" height="12" rx="3" fill="none" stroke="#333" stroke-width="1.5"/>
+          <rect x="242" y="47" width="3" height="6" rx="1.5" fill="#333"/>
+          <rect x="215.5" y="45.5" width="20" height="9" rx="2" fill="#22C55E"/>
+          <text x="228" y="58" font-size="9" fill="#333" font-family="Inter,sans-serif">●●●●</text>
+
+          <!-- App header -->
+          <rect x="10" y="60" width="240" height="52" fill="#0A0A0C"/>
+          <!-- Logo -->
+          <path d="M30 70 L42 77 L42 90 Q42 97 30 100 Q18 97 18 90 L18 77 Z" fill="#F97316"/>
+          <path d="M30 70 L42 77 L42 90 Q42 97 30 100 Q18 97 18 90 L18 77 Z" fill="url(#hg)" opacity=".3"/>
+          <defs><linearGradient id="hg" x1="30" y1="70" x2="30" y2="100"><stop offset="0%" stop-color="white"/><stop offset="100%" stop-color="transparent"/></linearGradient></defs>
+          <text x="48" y="82" font-size="13" fill="white" font-family="serif" font-weight="700">GuardIA</text>
+          <text x="48" y="97" font-size="9" fill="#F97316" font-family="Inter,sans-serif">Garita · Almendros</text>
+          <!-- Notification bell -->
+          <circle cx="232" cy="86" r="14" fill="#1A1A20"/>
+          <path d="M232 77 C229 77 226 80 226 84 L226 88 L224 90 L240 90 L238 88 L238 84 C238 80 235 77 232 77 Z" fill="#F97316"/>
+          <rect x="229" y="90" width="6" height="2" rx="1" fill="#F97316"/>
+
+          <!-- Tabs -->
+          <rect x="10" y="112" width="120" height="32" fill="#F0EDE8"/>
+          <rect x="130" y="112" width="120" height="32" fill="#0A0A0C"/>
+          <text x="70" y="132" font-size="11" fill="#888" font-family="Inter,sans-serif" font-weight="600" text-anchor="middle">Esperados (4)</text>
+          <text x="190" y="132" font-size="11" fill="white" font-family="Inter,sans-serif" font-weight="700" text-anchor="middle">Adentro (2)</text>
+          <rect x="130" y="142" width="120" height="2" fill="#F97316"/>
+
+          <!-- Section label -->
+          <text x="22" y="162" font-size="10" fill="#AAA" font-family="Inter,sans-serif">Visitantes activos ahora</text>
+          <rect x="200" y="152" width="36" height="18" rx="9" fill="#22C55E"/>
+          <text x="218" y="164" font-size="10" fill="white" font-family="Inter,sans-serif" font-weight="700" text-anchor="middle">2</text>
+
+          <!-- Visitor card 1 -->
+          <rect x="16" y="172" width="228" height="76" rx="14" fill="white" stroke="#E7E5E4" stroke-width="1"/>
+          <rect x="16" y="172" width="5" height="76" rx="2" fill="#22C55E"/>
+          <!-- Avatar -->
+          <circle cx="48" cy="210" r="20" fill="#F0EDE8"/>
+          <circle cx="48" cy="204" r="8" fill="#C8A882"/>
+          <path d="M32 230 Q48 220 64 230" fill="#C8A882"/>
+          <!-- Info -->
+          <text x="76" y="192" font-size="12" fill="#111" font-family="Inter,sans-serif" font-weight="700">Carolina Méndez</text>
+          <text x="76" y="208" font-size="10" fill="#888" font-family="Inter,sans-serif">Casa 12 · Ingresó 10:32 AM</text>
+          <!-- Vehicle badge -->
+          <rect x="76" y="216" width="70" height="18" rx="9" fill="#F8F7F4" stroke="#E7E5E4" stroke-width="1"/>
+          <text x="111" y="229" font-size="9" fill="#555" font-family="Inter,sans-serif" text-anchor="middle">🏍 P-512GHT</text>
+          <!-- Exit button -->
+          <rect x="170" y="214" width="68" height="26" rx="9" fill="#22C55E"/>
+          <text x="204" y="231" font-size="10.5" fill="white" font-family="Inter,sans-serif" font-weight="700" text-anchor="middle">↑ Salida</text>
+
+          <!-- Visitor card 2 -->
+          <rect x="16" y="256" width="228" height="76" rx="14" fill="white" stroke="#E7E5E4" stroke-width="1"/>
+          <rect x="16" y="256" width="5" height="76" rx="2" fill="#22C55E"/>
+          <circle cx="48" cy="294" r="20" fill="#F0EDE8"/>
+          <circle cx="48" cy="288" r="8" fill="#A89070"/>
+          <path d="M32 314 Q48 304 64 314" fill="#A89070"/>
+          <text x="76" y="276" font-size="12" fill="#111" font-family="Inter,sans-serif" font-weight="700">Marcos López</text>
+          <text x="76" y="292" font-size="10" fill="#888" font-family="Inter,sans-serif">Casa 7 · Ingresó 11:05 AM</text>
+          <rect x="76" y="300" width="60" height="18" rx="9" fill="#F8F7F4" stroke="#E7E5E4" stroke-width="1"/>
+          <text x="106" y="313" font-size="9" fill="#555" font-family="Inter,sans-serif" text-anchor="middle">🚶 A pie</text>
+          <rect x="170" y="298" width="68" height="26" rx="9" fill="#22C55E"/>
+          <text x="204" y="315" font-size="10.5" fill="white" font-family="Inter,sans-serif" font-weight="700" text-anchor="middle">↑ Salida</text>
+
+          <!-- Unregistered exit button -->
+          <rect x="16" y="342" width="228" height="34" rx="10" fill="#FFF8EB" stroke="#FCD34D" stroke-width="1"/>
+          <text x="130" y="363" font-size="10" fill="#92400E" font-family="Inter,sans-serif" text-anchor="middle">⚠ Registrar salida no listada</text>
+
+          <!-- Bottom nav -->
+          <rect x="10" y="456" width="240" height="46" rx="0" fill="white" stroke="#E7E5E4" stroke-width="1"/>
+          <rect x="10" y="480" width="240" height="22" rx="0" fill="white"/>
+          <!-- Nav items -->
+          <g transform="translate(50,465)">
+            <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z" fill="#F97316" transform="scale(.8)"/>
+            <text x="9" y="28" font-size="8" fill="#F97316" font-family="Inter,sans-serif" text-anchor="middle">Garita</text>
+          </g>
+          <g transform="translate(118,465)">
+            <path d="M9 11H7v2h2v-2zm4 0h-2v2h2v-2zm4 0h-2v2h2v-2zm2-7h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V9h14v11z" fill="#CCC" transform="scale(.75) translate(0,2)"/>
+            <text x="9" y="28" font-size="8" fill="#CCC" font-family="Inter,sans-serif" text-anchor="middle">Bitácora</text>
+          </g>
+          <g transform="translate(186,465)">
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z" fill="#CCC" transform="scale(.75) translate(0,2)"/>
+            <text x="9" y="28" font-size="8" fill="#CCC" font-family="Inter,sans-serif" text-anchor="middle">Perfil</text>
+          </g>
+          <!-- Home indicator -->
+          <rect x="105" y="502" width="50" height="3" rx="1.5" fill="#DDD"/>
+        </svg>
+
+        <!-- Floating notification badge -->
+        <div style="position:absolute; top:-16px; right:-20px; background:#0A0A0C; border:1.5px solid #F97316; border-radius:12px; padding:10px 14px; width:190px; box-shadow:0 8px 24px rgba(0,0,0,.4);">
+          <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
+            <div style="width:24px; height:24px; background:#F97316; border-radius:6px; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+              <svg width="14" height="14" viewBox="0 0 100 100"><path d="M50 10 L80 30 L80 60 Q80 80 50 90 Q20 80 20 60 L20 30 Z" fill="#0A0A0C"/></svg>
+            </div>
+            <span style="font-size:11px; font-weight:700; color:white; font-family:Inter,sans-serif;">GuardIA</span>
+            <span style="font-size:10px; color:#F97316; font-family:Inter,sans-serif; margin-left:auto;">ahora</span>
+          </div>
+          <div style="font-size:12px; font-weight:600; color:white; font-family:Inter,sans-serif; margin-bottom:2px;">Carolina M. ingresó ✓</div>
+          <div style="font-size:11px; color:#888; font-family:Inter,sans-serif;">Casa 12 · Moto P-512GHT</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section id="features" class="features-section">
+  <div class="features-inner">
+    <div class="reveal" style="text-align:center; max-width:560px; margin:0 auto;">
+      <span class="section-tag">CARACTERÍSTICAS</span>
+      <h2 class="section-title">Control completo de acceso</h2>
+      <p class="section-sub">Diseñado para residenciales reales, con los problemas reales que tienen.</p>
+    </div>
+    <div class="features-grid" style="margin-top:60px;">
+
+      <div class="feat-card reveal">
+        <div class="feat-icon" style="background:#FFF1E6;">
+          <svg width="26" height="26" fill="#F97316" viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+        </div>
+        <div class="feat-title">Registro de Entrada</div>
+        <div class="feat-desc">Captura foto, verifica DPI, registra vehículo. Notificación inmediata al residente con todos los detalles.</div>
+      </div>
+
+      <div class="feat-card reveal">
+        <div class="feat-icon" style="background:#DCFCE7;">
+          <svg width="26" height="26" fill="#16A34A" viewBox="0 0 24 24"><path d="M13 3h-2v10h2V3zm4.83 2.17l-1.42 1.42C17.99 7.86 19 9.81 19 12c0 3.87-3.13 7-7 7s-7-3.13-7-7c0-2.19 1.01-4.14 2.58-5.42L6.17 5.17C4.23 6.82 3 9.26 3 12c0 4.97 4.03 9 9 9s9-4.03 9-9c0-2.74-1.23-5.18-3.17-6.83z"/></svg>
+        </div>
+        <div class="feat-title">Registro de Salida</div>
+        <div class="feat-desc">Tab "Adentro" con visitantes activos. Un toque cierra la visita. Pase recurrente reabre automáticamente al día siguiente.</div>
+      </div>
+
+      <div class="feat-card reveal">
+        <div class="feat-icon" style="background:#FFF1E6;">
+          <svg width="26" height="26" fill="#F97316" viewBox="0 0 24 24"><path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/></svg>
+        </div>
+        <div class="feat-title">Push Notifications</div>
+        <div class="feat-desc">FCM nativo. Entrada, salida, DPI, foto y vehículo — todo en una notificación. Sin SMS, sin WhatsApp, sin costo variable.</div>
+      </div>
+
+      <div class="feat-card reveal">
+        <div class="feat-icon" style="background:#F0F7FF;">
+          <svg width="26" height="26" fill="#3B82F6" viewBox="0 0 24 24"><path d="M12 1C6.48 1 2 5.48 2 11s4.48 10 10 10 10-4.48 10-10S17.52 1 12 1zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm3.5-9c.83 0 1.5-.67 1.5-1.5S16.33 7 15.5 7 14 7.67 14 8.5s.67 1.5 1.5 1.5zm-7 0c.83 0 1.5-.67 1.5-1.5S9.33 7 8.5 7 7 7.67 7 8.5 7.67 10 8.5 10zm3.5 6.5c2.33 0 4.31-1.46 5.11-3.5H6.89c.8 2.04 2.78 3.5 5.11 3.5z"/></svg>
+        </div>
+        <div class="feat-title">Auditoría Inmutable</div>
+        <div class="feat-desc">Hash chain en cada evento. Bitácora permanente que no puede alterarse. Cumplimiento normativo y detección de fraude.</div>
+      </div>
+
+      <div class="feat-card reveal">
+        <div class="feat-icon" style="background:#FFF1E6;">
+          <svg width="26" height="26" fill="#F97316" viewBox="0 0 24 24"><path d="M9 11H7v2h2v-2zm4 0h-2v2h2v-2zm4 0h-2v2h2v-2zm2-7h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V9h14v11z"/></svg>
+        </div>
+        <div class="feat-title">Permisos Flexibles</div>
+        <div class="feat-desc">Día único o recurrente (hasta 30 días). Requiere DPI upload para recurrentes. Revocación en tiempo real desde la app.</div>
+      </div>
+
+      <div class="feat-card reveal">
+        <div class="feat-icon" style="background:#FFF1E6;">
+          <svg width="26" height="26" fill="#F97316" viewBox="0 0 24 24"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
+        </div>
+        <div class="feat-title">Multi-tenant</div>
+        <div class="feat-desc">Una sola app, múltiples conjuntos. Admin, Vigilante y Residente en un ecosistema. Escala sin costo adicional por conjunto.</div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- PRICING -->
+<section id="pricing" class="pricing-section">
+  <div class="pricing-inner">
+    <div class="reveal" style="text-align:center; max-width:520px; margin:0 auto;">
+      <span class="section-tag">PLANES</span>
+      <h2 class="section-title">Transparente y en Quetzales</h2>
+      <p class="section-sub">Sin setup fee. Sin sorpresas. Facturación mensual, cancela cuando quieras.</p>
+    </div>
+
+    <div class="pricing-grid reveal">
+
+      <!-- Pequeño -->
+      <div class="price-card">
+        <div class="plan-name">PEQUEÑO</div>
+        <div class="plan-price">Q 750 <span>/ mes</span></div>
+        <div class="plan-usd">≈ USD 100</div>
+        <div class="plan-limit">Hasta 100 casas</div>
+        <ul class="plan-features">
+          <li class="plan-feat"><svg class="check" width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg> Registro entrada y salida</li>
+          <li class="plan-feat"><svg class="check" width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg> Push notifications nativas</li>
+          <li class="plan-feat"><svg class="check" width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg> 3 roles (Admin, Vigilante, Residente)</li>
+          <li class="plan-feat"><svg class="check" width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg> Bitácora de accesos</li>
+          <li class="plan-feat"><svg class="check" width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg> Autorizaciones por día</li>
+        </ul>
+        <a href="#demo" class="btn-plan btn-plan-outline">Comenzar</a>
+      </div>
+
+      <!-- Mediano (popular) -->
+      <div class="price-card popular">
+        <div class="popular-badge">MÁS POPULAR</div>
+        <div class="plan-name">MEDIANO</div>
+        <div class="plan-price">Q 1,350 <span>/ mes</span></div>
+        <div class="plan-usd">≈ USD 180</div>
+        <div class="plan-limit">Hasta 300 casas</div>
+        <ul class="plan-features">
+          <li class="plan-feat"><svg class="check" width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg> Todo lo del plan Pequeño</li>
+          <li class="plan-feat"><svg class="check" width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg> Autorizaciones recurrentes (30 días)</li>
+          <li class="plan-feat"><svg class="check" width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg> Auditoría avanzada con hash chain</li>
+          <li class="plan-feat"><svg class="check" width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg> Reportes de acceso</li>
+          <li class="plan-feat"><svg class="check" width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg> Soporte por WhatsApp</li>
+        </ul>
+        <a href="#demo" class="btn-plan btn-plan-filled">Comenzar ahora →</a>
+      </div>
+
+      <!-- Grande -->
+      <div class="price-card">
+        <div class="plan-name">GRANDE</div>
+        <div class="plan-price">Q 1,875 <span>/ mes</span></div>
+        <div class="plan-usd">≈ USD 250</div>
+        <div class="plan-limit">Casas ilimitadas</div>
+        <ul class="plan-features">
+          <li class="plan-feat"><svg class="check" width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg> Todo lo del plan Mediano</li>
+          <li class="plan-feat"><svg class="check" width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg> Soporte prioritario dedicado</li>
+          <li class="plan-feat"><svg class="check" width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg> SLA 99.9% garantizado</li>
+          <li class="plan-feat"><svg class="check" width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg> Onboarding asistido</li>
+          <li class="plan-feat"><svg class="check" width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg> API + Webhooks</li>
+        </ul>
+        <a href="#demo" class="btn-plan btn-plan-outline">Contactar</a>
+      </div>
+    </div>
+
+    <p style="text-align:center; font-size:14px; color:#AAA; margin-top:36px;">
+      ¿Tienes más de 500 casas o necesitas algo específico?
+      <a href="#demo" style="color:var(--orange); text-decoration:none; font-weight:600;"> Hablemos →</a>
+    </p>
+  </div>
+</section>
+
+<!-- CTA -->
+<section id="demo" class="cta-section">
+  <div class="cta-glow"></div>
+  <div class="cta-inner reveal">
+    <!-- Real GuardIA logo -->
+    <img src="guardia-logo.png" alt="GuardIA" style="height:80px; width:80px; object-fit:cover; border-radius:16px; margin:0 auto 24px; display:block; box-shadow:0 0 40px rgba(249,115,22,.3);"/>
+    <h2 class="cta-title">¿Listo para modernizar<br/>tu residencial?</h2>
+    <p class="cta-sub">Demo gratuita, sin tarjeta de crédito. Nuestro equipo te muestra GuardIA en acción con tu conjunto.</p>
+    <div class="cta-btns">
+      <a href="mailto:hola@guardia.app" class="btn-primary">
+        Solicitar Demo Gratis
+      </a>
+      <a href="https://wa.me/50212345678" target="_blank" style="display:inline-flex; align-items:center; gap:8px; padding:14px 28px; border-radius:10px; border:1.5px solid #333; color:#DDD; text-decoration:none; font-size:16px; font-weight:600; transition:all .2s;">
+        <svg width="20" height="20" fill="#25D366" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+        WhatsApp
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-inner">
+    <div class="footer-grid">
+      <div>
+        <div style="display:flex; align-items:center; gap:10px; margin-bottom:12px;">
+          <img src="guardia-logo.png" alt="GuardIA" style="height:40px; width:40px; object-fit:cover; border-radius:8px;"/>
+          <span class="footer-logo-text">GuardIA</span>
+        </div>
+        <p class="footer-desc">Control de acceso residencial inteligente. Diseñado para Guatemala y LATAM.</p>
+      </div>
+      <div>
+        <div class="footer-col-title">Producto</div>
+        <ul class="footer-links">
+          <li><a href="#features">Features</a></li>
+          <li><a href="#pricing">Planes</a></li>
+          <li><a href="#como-funciona">Cómo funciona</a></li>
+          <li><a href="#demo">Demo</a></li>
+        </ul>
+      </div>
+      <div>
+        <div class="footer-col-title">Compañía</div>
+        <ul class="footer-links">
+          <li><a href="#">Blog</a></li>
+          <li><a href="#">Contacto</a></li>
+          <li><a href="mailto:hola@guardia.app">hola@guardia.app</a></li>
+        </ul>
+      </div>
+      <div>
+        <div class="footer-col-title">Legal</div>
+        <ul class="footer-links">
+          <li><a href="/privacy">Privacidad</a></li>
+          <li><a href="/terms">Términos</a></li>
+          <li><a href="#">Seguridad</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span class="footer-copy">© 2026 GuardIA. Todos los derechos reservados.</span>
+      <div class="footer-flag">Hecho en Guatemala 🇬🇹</div>
+    </div>
+  </div>
+</footer>
+
+<!-- SCROLL REVEAL -->
+<script>
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach((e, i) => {
+      if (e.isIntersecting) {
+        setTimeout(() => e.target.classList.add('visible'), i * 80);
+        observer.unobserve(e.target);
+      }
+    });
+  }, { threshold: 0.12 });
+  document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+</script>
+
+</body>
+</html>
