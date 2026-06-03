@@ -3210,9 +3210,8 @@ function ResetPasswordScreen({ onDone }) {
     setStatus('loading'); setError('');
     try {
       await api.updatePassword(password);
-      await api.signOut();
       setStatus('done');
-      setTimeout(onDone, 2500);
+      setTimeout(() => window.location.href = '/app', 2500);
     } catch (e) {
       setError(e.message || 'Error al actualizar la contraseña.');
       setStatus('error');
