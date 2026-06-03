@@ -39,7 +39,7 @@ export const supabase = USE_SUPABASE
         storage: capacitorStorage,
         autoRefreshToken: true,
         persistSession: true,
-        detectSessionInUrl: false,
+        detectSessionInUrl: true,
       },
     })
   : null;
