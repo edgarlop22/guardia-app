@@ -19,6 +19,7 @@ import {
   platform,
 } from './lib/native.js';
 import * as api from './lib/api.js';
+import { supabase } from './lib/supabase.js';
 import { useBackend, USE_SUPABASE } from './lib/useBackend.js';
 import shieldLogo from './assets/guardia-shield.png';
 
@@ -419,7 +420,13 @@ export default function App() {
         } catch (e) {
           console.warn('[session/supabase] restore failed:', e);
         }
-        return;
+        // Listen for PASSWORD_RECOVERY event (user clicked reset link in email)
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+          if (event === 'PASSWORD_RECOVERY') {
+            setScreen('reset-password');
+          }
+        });
+        return () => subscription.unsubscribe();
       }
       // Seed fallback
       try {
@@ -513,11 +520,26 @@ export default function App() {
         />
       );
     }
+    if (screen === 'forgot') {
+      return (
+        <ForgotPasswordScreen
+          onBack={() => setScreen('login')}
+        />
+      );
+    }
+    if (screen === 'reset-password') {
+      return (
+        <ResetPasswordScreen
+          onDone={() => setScreen('login')}
+        />
+      );
+    }
     return (
       <LoginScreen
         users={users}
         onLogin={login}
         onActivate={() => setScreen('activate')}
+        onForgotPassword={() => setScreen('forgot')}
       />
     );
   }
@@ -562,7 +584,7 @@ export default function App() {
 // ============================================================
 // LOGIN SCREEN
 // ============================================================
-function LoginScreen({ users, onLogin, onActivate }) {
+function LoginScreen({ users, onLogin, onActivate, onForgotPassword }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -632,6 +654,14 @@ function LoginScreen({ users, onLogin, onActivate }) {
               <AlertCircle className="w-4 h-4 shrink-0 mt-0.5"/>{error}
             </div>
           )}
+
+          {/* Forgot password */}
+          <div className="text-right -mt-1">
+            <button onClick={onForgotPassword}
+              className="text-xs text-stone-500 hover:text-orange-400 transition underline-offset-2 hover:underline">
+              ¿Olvidaste tu contraseña?
+            </button>
+          </div>
 
           <button onClick={submit}
             className="w-full bg-orange-500 hover:bg-orange-400 text-black font-bold rounded-lg py-3.5 transition flex items-center justify-center gap-2 shadow-lg shadow-orange-500/20">
@@ -3046,6 +3076,195 @@ function LogsPanel({ logs }) {
             </div>
           );
         })}
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// FORGOT PASSWORD SCREEN
+// ============================================================
+function ForgotPasswordScreen({ onBack }) {
+  const [email, setEmail]   = useState('');
+  const [status, setStatus] = useState('idle'); // idle | loading | sent | error
+  const [error, setError]   = useState('');
+
+  const submit = async () => {
+    if (!email.trim()) { setError('Ingresa tu correo electrónico.'); return; }
+    setStatus('loading');
+    setError('');
+    try {
+      await api.requestPasswordReset(email.trim());
+      setStatus('sent');
+    } catch (e) {
+      setError(e.message || 'Error al enviar el correo. Intenta de nuevo.');
+      setStatus('error');
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-black text-stone-50 grain-orange" style={{ fontFamily: "'Geist', ui-sans-serif, system-ui, sans-serif" }}>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,700;9..144,800&family=JetBrains+Mono:wght@400;700&family=Geist:wght@300;400;500;600;700&display=swap');
+        .font-display { font-family: 'Fraunces', Georgia, serif; letter-spacing: -0.02em; }
+        .font-mono    { font-family: 'JetBrains Mono', ui-monospace, monospace; }
+        .grain-orange { background-image: radial-gradient(circle at 1px 1px, rgba(234,88,12,0.10) 1px, transparent 0); background-size: 18px 18px; }
+      `}</style>
+
+      <div className="max-w-md mx-auto px-6 pt-12 pb-8">
+        <button onClick={onBack} className="flex items-center gap-2 text-stone-400 hover:text-white text-sm mb-10 transition">
+          <ArrowLeft className="w-4 h-4"/> Volver al login
+        </button>
+
+        <div className="flex items-center gap-3 mb-10">
+          <GuardLogo size={48}/>
+          <div>
+            <h1 className="font-display text-2xl font-bold">{BRAND.name}</h1>
+            <p className="font-mono text-[10px] text-orange-400 uppercase tracking-widest">{BRAND.tagline}</p>
+          </div>
+        </div>
+
+        {status === 'sent' ? (
+          <div className="text-center py-8">
+            <div className="w-16 h-16 rounded-full bg-green-950 border border-green-700 flex items-center justify-center mx-auto mb-6">
+              <CheckCircle2 className="w-8 h-8 text-green-400"/>
+            </div>
+            <h2 className="font-display text-3xl mb-3">Revisa tu correo</h2>
+            <p className="text-stone-400 text-sm leading-relaxed mb-6">
+              Enviamos un enlace de recuperación a <span className="text-white font-medium">{email}</span>.
+              El enlace expira en 1 hora.
+            </p>
+            <p className="text-stone-600 text-xs mb-8">¿No lo ves? Revisa tu carpeta de spam.</p>
+            <button onClick={onBack}
+              className="w-full bg-stone-900 border border-stone-700 hover:border-orange-500 text-stone-200 rounded-lg py-3 transition">
+              Volver al login
+            </button>
+          </div>
+        ) : (
+          <>
+            <h2 className="font-display text-4xl mb-1">Recuperar contraseña</h2>
+            <p className="text-stone-400 text-sm mb-8">Te enviamos un enlace para crear una nueva contraseña.</p>
+
+            <div className="space-y-4">
+              <div>
+                <label className="font-mono text-[10px] uppercase tracking-wider text-stone-500 mb-1.5 block">Correo electrónico</label>
+                <div className="relative">
+                  <AtSign className="w-4 h-4 absolute left-3 top-3.5 text-stone-500"/>
+                  <input type="email" value={email} onChange={e => setEmail(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && submit()}
+                    placeholder="tu.correo@ejemplo.com"
+                    className="w-full bg-stone-900 border border-stone-800 rounded-lg pl-9 pr-3 py-3 text-sm focus:outline-none focus:border-orange-500 placeholder-stone-600"/>
+                </div>
+              </div>
+
+              {(error || status === 'error') && (
+                <div className="bg-red-950 border border-red-800 text-red-200 rounded-lg px-3 py-2.5 text-sm flex gap-2">
+                  <AlertCircle className="w-4 h-4 shrink-0 mt-0.5"/>{error}
+                </div>
+              )}
+
+              <button onClick={submit} disabled={status === 'loading'}
+                className="w-full bg-orange-500 hover:bg-orange-400 disabled:opacity-60 text-black font-bold rounded-lg py-3.5 transition flex items-center justify-center gap-2">
+                {status === 'loading' ? 'Enviando...' : 'Enviar enlace de recuperación'}
+                {status !== 'loading' && <ChevronRight className="w-5 h-5"/>}
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// RESET PASSWORD SCREEN — shown after user clicks email link
+// ============================================================
+function ResetPasswordScreen({ onDone }) {
+  const [password,  setPassword]  = useState('');
+  const [password2, setPassword2] = useState('');
+  const [status, setStatus]       = useState('idle');
+  const [error,  setError]        = useState('');
+
+  const submit = async () => {
+    if (!password || password.length < 6)  { setError('La contraseña debe tener al menos 6 caracteres.'); return; }
+    if (password !== password2)             { setError('Las contraseñas no coinciden.'); return; }
+    setStatus('loading'); setError('');
+    try {
+      await api.updatePassword(password);
+      setStatus('done');
+      setTimeout(onDone, 2500);
+    } catch (e) {
+      setError(e.message || 'Error al actualizar la contraseña.');
+      setStatus('error');
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-black text-stone-50 grain-orange" style={{ fontFamily: "'Geist', ui-sans-serif, system-ui, sans-serif" }}>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,700;9..144,800&family=JetBrains+Mono:wght@400;700&family=Geist:wght@300;400;500;600;700&display=swap');
+        .font-display { font-family: 'Fraunces', Georgia, serif; letter-spacing: -0.02em; }
+        .font-mono    { font-family: 'JetBrains Mono', ui-monospace, monospace; }
+        .grain-orange { background-image: radial-gradient(circle at 1px 1px, rgba(234,88,12,0.10) 1px, transparent 0); background-size: 18px 18px; }
+      `}</style>
+
+      <div className="max-w-md mx-auto px-6 pt-12 pb-8">
+        <div className="flex items-center gap-3 mb-10">
+          <GuardLogo size={48}/>
+          <div>
+            <h1 className="font-display text-2xl font-bold">{BRAND.name}</h1>
+            <p className="font-mono text-[10px] text-orange-400 uppercase tracking-widest">{BRAND.tagline}</p>
+          </div>
+        </div>
+
+        {status === 'done' ? (
+          <div className="text-center py-8">
+            <div className="w-16 h-16 rounded-full bg-green-950 border border-green-700 flex items-center justify-center mx-auto mb-6">
+              <CheckCircle2 className="w-8 h-8 text-green-400"/>
+            </div>
+            <h2 className="font-display text-3xl mb-3">¡Contraseña actualizada!</h2>
+            <p className="text-stone-400 text-sm">Redirigiendo al login...</p>
+          </div>
+        ) : (
+          <>
+            <h2 className="font-display text-4xl mb-1">Nueva contraseña</h2>
+            <p className="text-stone-400 text-sm mb-8">Elige una contraseña segura para tu cuenta.</p>
+
+            <div className="space-y-4">
+              <div>
+                <label className="font-mono text-[10px] uppercase tracking-wider text-stone-500 mb-1.5 block">Nueva contraseña</label>
+                <div className="relative">
+                  <Lock className="w-4 h-4 absolute left-3 top-3.5 text-stone-500"/>
+                  <input type="password" value={password} onChange={e => setPassword(e.target.value)}
+                    placeholder="Mínimo 6 caracteres"
+                    className="w-full bg-stone-900 border border-stone-800 rounded-lg pl-9 pr-3 py-3 text-sm focus:outline-none focus:border-orange-500 placeholder-stone-600"/>
+                </div>
+              </div>
+              <div>
+                <label className="font-mono text-[10px] uppercase tracking-wider text-stone-500 mb-1.5 block">Confirmar contraseña</label>
+                <div className="relative">
+                  <Lock className="w-4 h-4 absolute left-3 top-3.5 text-stone-500"/>
+                  <input type="password" value={password2} onChange={e => setPassword2(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && submit()}
+                    placeholder="Repite la contraseña"
+                    className="w-full bg-stone-900 border border-stone-800 rounded-lg pl-9 pr-3 py-3 text-sm focus:outline-none focus:border-orange-500 placeholder-stone-600"/>
+                </div>
+              </div>
+
+              {error && (
+                <div className="bg-red-950 border border-red-800 text-red-200 rounded-lg px-3 py-2.5 text-sm flex gap-2">
+                  <AlertCircle className="w-4 h-4 shrink-0 mt-0.5"/>{error}
+                </div>
+              )}
+
+              <button onClick={submit} disabled={status === 'loading'}
+                className="w-full bg-orange-500 hover:bg-orange-400 disabled:opacity-60 text-black font-bold rounded-lg py-3.5 transition flex items-center justify-center gap-2">
+                {status === 'loading' ? 'Guardando...' : 'Guardar nueva contraseña'}
+                {status !== 'loading' && <ChevronRight className="w-5 h-5"/>}
+              </button>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
