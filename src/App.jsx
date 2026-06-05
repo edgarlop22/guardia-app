@@ -4,7 +4,7 @@ import {
   CheckCircle2, XCircle, Clock, FileText, Calendar, Smartphone,
   Trash2, RefreshCw, Eye, Settings, Activity, Lock, Camera,
   ChevronRight, ArrowLeft, KeyRound, ShieldAlert, ShieldCheck,
-  Hash, Fingerprint, BellRing, Send, Building2, Key, User,
+  Hash, Fingerprint, BellRing, Send, Building2, Briefcase, Key, User,
   Car, Bike, Footprints, LogOut, UserPlus, Crown, Mail, AtSign,
   ImageIcon, MapPin, Sparkles, Image as ImgIcon, Upload
 } from 'lucide-react';
@@ -56,9 +56,31 @@ const BRAND = {
   tagline: 'Control de acceso residencial',
 };
 
-// ===== Address helpers =====
-const houseLabel = (h) => `${h.manzana}-${h.fase}-${h.numero}`;
-const houseLong  = (h) => `Manzana ${h.manzana} · Fase ${h.fase} · Casa ${h.numero}`;
+// Etiquetas de dirección según el tipo de unidad.
+// El orden de las 3 ranuras en la DB es: numero (slot 1), manzana (slot 2), fase (slot 3).
+const UNIT_TYPES = [
+  { key: 'casa',        label: 'Casa',        desc: 'Residencial / condominio' },
+  { key: 'apartamento', label: 'Apartamento', desc: 'Edificio / torre' },
+  { key: 'oficina',     label: 'Oficina',     desc: 'Edificio comercial' },
+];
+const ADDRESS_LABELS = {
+  casa:        ['N° de casa', 'Manzana', 'Fase'],
+  apartamento: ['N° de apto', 'Piso', 'Torre / Bloque'],
+  oficina:     ['N° de oficina', 'Piso', 'Edificio / Torre'],
+};
+const addrLabels = (h) => ADDRESS_LABELS[h?.unitType] || ADDRESS_LABELS.casa;
+
+const houseLabel = (h) =>
+  [h.manzana, h.fase, h.numero].map(x => (x || '').toString().trim()).filter(Boolean).join('-') || 's/n';
+
+const houseLong = (h) => {
+  const L = addrLabels(h);
+  return [
+    h.numero  && `${L[0]} ${h.numero}`,
+    h.manzana && `${L[1]} ${h.manzana}`,
+    h.fase    && `${L[2]} ${h.fase}`,
+  ].filter(Boolean).join(' · ');
+};
 
 // ===== Conjuntos (residenciales / tenants) =====
 // Each is a tenant in the system. logoData is base64 (uploaded by admin) or null.
@@ -2071,12 +2093,15 @@ function HousesPanel({ houses, setHouses, addLog, currentConjunto }) {
         const newHouse = {
           id: row.id,
           conjuntoId: row.conjunto_id,
-          manzana: row.manzana,
-          fase: row.fase,
-          numero: row.numero,
+          unitType: row.unit_type || 'casa',
+          numero: row.numero || '',
+          manzana: row.manzana || '',
+          fase: row.fase || '',
+          addressExtra: row.address_extra || '',
           owner: row.owner_name,
+          email: row.owner_email || '',
+          phone: row.owner_phone || '',
           tipo: row.tipo,
-          vigencia: row.vigencia,
           devices: [],
         };
         setHouses(prev => [...prev, newHouse]);
@@ -2119,8 +2144,13 @@ function HousesPanel({ houses, setHouses, addLog, currentConjunto }) {
                 </div>
                 <p className="font-display text-xl mt-1.5">{h.owner}</p>
                 <p className="font-mono text-[10px] text-stone-500 mt-0.5">
-                  Mz. {h.manzana} · Fase {h.fase} · Casa {h.numero}
+                  {houseLong(h)}{h.addressExtra ? ` · ${h.addressExtra}` : ''}
                 </p>
+                {(h.email || h.phone) && (
+                  <p className="font-mono text-[10px] text-stone-400 mt-0.5">
+                    {[h.email, h.phone].filter(Boolean).join(' · ')}
+                  </p>
+                )}
               </div>
               <span className={`shrink-0 text-[10px] font-mono px-2 py-1 rounded ${full ? 'bg-amber-100 text-amber-900' : 'bg-orange-100 text-orange-600'}`}>
                 {h.devices.length}/2 disp.
@@ -2170,32 +2200,41 @@ function HousesPanel({ houses, setHouses, addLog, currentConjunto }) {
 }
 
 function CreateHouseModal({ onClose, onCreate, existing }) {
-  const [manzana, setManzana] = useState('');
-  const [fase, setFase]       = useState('');
-  const [numero, setNumero]   = useState('');
-  const [owner, setOwner]     = useState('');
-  const [email, setEmail]     = useState('');
-  const [telefono, setTelefono] = useState('');
-  const [tipo, setTipo]       = useState('propietario');
-  const [vigencia, setVigencia] = useState('');
-  const [error, setError] = useState('');
+  const [unitType, setUnitType]         = useState('casa');
+  const [slot1, setSlot1]               = useState(''); // numero
+  const [slot2, setSlot2]               = useState(''); // manzana / piso
+  const [slot3, setSlot3]               = useState(''); // fase / bloque
+  const [addressExtra, setAddressExtra] = useState('');
+  const [owner, setOwner]               = useState('');
+  const [email, setEmail]               = useState('');
+  const [phone, setPhone]               = useState('');
+  const [tipo, setTipo]                 = useState('propietario');
+  const [error, setError]               = useState('');
+
+  const labels = ADDRESS_LABELS[unitType];
+  const icons  = { casa: Home, apartamento: Building2, oficina: Briefcase };
 
   const submit = () => {
-    if (!manzana.trim() || !fase.trim() || !numero.trim()) return setError('Manzana, fase y número son obligatorios.');
-    if (!owner.trim()) return setError('Indica el titular de la casa.');
-    if (!email.trim() || !email.includes('@')) return setError('Email del titular inválido.');
-    if (tipo === 'arrendatario' && !vigencia) return setError('El arrendatario requiere fecha de vencimiento del contrato.');
-    const lbl = `${manzana.toUpperCase()}-${fase}-${numero}`;
-    if (existing.some(h => houseLabel(h) === lbl)) return setError(`Ya existe una casa con identificador ${lbl}.`);
+    setError('');
+    if (!slot1.trim()) return setError(`${labels[0]} es obligatorio.`);
+    if (!owner.trim()) return setError('Indica el nombre del residente.');
+    if (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()))
+      return setError('Correo del residente inválido.');
+
+    const lbl = [slot2, slot3, slot1].map(x => x.trim()).filter(Boolean).join('-');
+    if (existing.some(h => houseLabel(h) === lbl))
+      return setError(`Ya existe una unidad con identificador ${lbl}.`);
+
     onCreate({
-      manzana: manzana.toUpperCase().trim(),
-      fase: fase.trim(),
-      numero: numero.trim(),
+      unitType,
+      numero: slot1.trim(),
+      manzana: slot2.trim(),
+      fase: slot3.trim(),
+      addressExtra: addressExtra.trim(),
       owner: owner.trim(),
-      email: email.trim(),
-      telefono: telefono.trim(),
+      email: email.trim().toLowerCase(),
+      phone: phone.trim(),
       tipo,
-      vigencia: tipo === 'arrendatario' ? vigencia : undefined,
     });
   };
 
@@ -2204,72 +2243,75 @@ function CreateHouseModal({ onClose, onCreate, existing }) {
       <div className="bg-stone-50 w-full sm:max-w-lg sm:rounded-2xl rounded-t-2xl max-h-[95vh] overflow-y-auto">
         <div className="sticky top-0 bg-stone-50 px-6 py-4 border-b border-stone-200 flex items-center justify-between">
           <div>
-            <p className="font-mono text-[10px] uppercase tracking-widest text-stone-500">Nueva casa</p>
-            <h2 className="font-display text-2xl mt-0.5">Crear casa y residente</h2>
+            <p className="font-mono text-[10px] uppercase tracking-widest text-stone-500">Nueva unidad</p>
+            <h2 className="font-display text-2xl mt-0.5">Crear unidad y residente</h2>
           </div>
           <button onClick={onClose} className="text-stone-400 hover:text-stone-700"><XCircle className="w-6 h-6"/></button>
         </div>
 
         <div className="p-6 space-y-5">
+          {/* Tipo de unidad */}
           <div>
-            <p className="font-mono text-[10px] uppercase tracking-wider text-stone-600 mb-2">Dirección</p>
+            <p className="font-mono text-[10px] uppercase tracking-wider text-stone-600 mb-2">Tipo de unidad</p>
             <div className="grid grid-cols-3 gap-2">
-              <Field label="Manzana">
-                <input value={manzana} onChange={e => setManzana(e.target.value)} maxLength={3}
-                  placeholder="Ej: A" className="w-full bg-white border border-stone-300 rounded-lg px-3 py-2.5 text-sm uppercase font-mono focus:outline-none focus:border-orange-600"/>
-              </Field>
-              <Field label="Fase">
-                <input value={fase} onChange={e => setFase(e.target.value)} maxLength={3}
-                  placeholder="1" className="w-full bg-white border border-stone-300 rounded-lg px-3 py-2.5 text-sm font-mono focus:outline-none focus:border-orange-600"/>
-              </Field>
-              <Field label="N° de casa">
-                <input value={numero} onChange={e => setNumero(e.target.value)} maxLength={6}
-                  placeholder="304" className="w-full bg-white border border-stone-300 rounded-lg px-3 py-2.5 text-sm font-mono focus:outline-none focus:border-orange-600"/>
-              </Field>
+              {UNIT_TYPES.map(t => (
+                <TypePill key={t.key} active={unitType === t.key}
+                  onClick={() => setUnitType(t.key)} icon={icons[t.key]} label={t.label} desc={t.desc}/>
+              ))}
             </div>
-            {(manzana || fase || numero) && (
-              <p className="font-mono text-[11px] text-stone-500 mt-2">
-                Identificador: <span className="font-bold text-stone-900">{manzana.toUpperCase() || '?'}-{fase || '?'}-{numero || '?'}</span>
-              </p>
-            )}
           </div>
 
+          {/* Dirección (etiquetas según el tipo) */}
           <div className="border-t border-stone-200 pt-5">
-            <p className="font-mono text-[10px] uppercase tracking-wider text-stone-600 mb-2">Residente titular</p>
+            <p className="font-mono text-[10px] uppercase tracking-wider text-stone-600 mb-2">Dirección</p>
+            <div className="grid grid-cols-3 gap-2">
+              <Field label={labels[0]}>
+                <input value={slot1} onChange={e => setSlot1(e.target.value)} maxLength={8}
+                  placeholder="Ej: 304" className="w-full bg-white border border-stone-300 rounded-lg px-3 py-2.5 text-sm font-mono focus:outline-none focus:border-orange-600"/>
+              </Field>
+              <Field label={labels[1]}>
+                <input value={slot2} onChange={e => setSlot2(e.target.value)} maxLength={8}
+                  placeholder="opcional" className="w-full bg-white border border-stone-300 rounded-lg px-3 py-2.5 text-sm font-mono focus:outline-none focus:border-orange-600"/>
+              </Field>
+              <Field label={labels[2]}>
+                <input value={slot3} onChange={e => setSlot3(e.target.value)} maxLength={8}
+                  placeholder="opcional" className="w-full bg-white border border-stone-300 rounded-lg px-3 py-2.5 text-sm font-mono focus:outline-none focus:border-orange-600"/>
+              </Field>
+            </div>
+            <div className="mt-3">
+              <Field label="Otra dirección" hint="opcional">
+                <input value={addressExtra} onChange={e => setAddressExtra(e.target.value)}
+                  placeholder="Referencia, calle, sector…" className="w-full bg-white border border-stone-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-orange-600"/>
+              </Field>
+            </div>
+          </div>
+
+          {/* Residente titular */}
+          <div className="border-t border-stone-200 pt-5">
+            <p className="font-mono text-[10px] uppercase tracking-wider text-stone-600 mb-2">Residente</p>
             <div className="space-y-3">
-              <Field label="Nombre / familia">
+              <Field label="Nombre completo">
                 <input value={owner} onChange={e => setOwner(e.target.value)}
                   placeholder="Ej: Familia Pérez" className="w-full bg-white border border-stone-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-orange-600"/>
               </Field>
-              <Field label="Email (para enviar invitación)">
+              <Field label="Correo electrónico">
                 <input type="email" value={email} onChange={e => setEmail(e.target.value)}
                   placeholder="titular@ejemplo.com" className="w-full bg-white border border-stone-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-orange-600"/>
               </Field>
-              <Field label="Teléfono (opcional)">
-                <input value={telefono} onChange={e => setTelefono(e.target.value)}
+              <Field label="Teléfono" hint="opcional">
+                <input value={phone} onChange={e => setPhone(e.target.value)}
                   placeholder="+502 ____-____" className="w-full bg-white border border-stone-300 rounded-lg px-3 py-2.5 text-sm font-mono focus:outline-none focus:border-orange-600"/>
               </Field>
             </div>
           </div>
 
+          {/* Propietario / Arrendatario */}
           <div className="border-t border-stone-200 pt-5">
-            <p className="font-mono text-[10px] uppercase tracking-wider text-stone-600 mb-2">Tipo de residente</p>
+            <p className="font-mono text-[10px] uppercase tracking-wider text-stone-600 mb-2">Tenencia</p>
             <div className="grid grid-cols-2 gap-2">
-              <TypePill active={tipo==='propietario'} onClick={() => setTipo('propietario')} icon={Key} label="Propietario" desc="Dueño de la casa"/>
-              <TypePill active={tipo==='arrendatario'} onClick={() => setTipo('arrendatario')} icon={User} label="Arrendatario" desc="Contrato temporal"/>
+              <TypePill active={tipo === 'propietario'} onClick={() => setTipo('propietario')} icon={Key} label="Propietario" desc="Dueño de la unidad"/>
+              <TypePill active={tipo === 'arrendatario'} onClick={() => setTipo('arrendatario')} icon={User} label="Arrendatario" desc="Contrato de renta"/>
             </div>
-            {tipo === 'arrendatario' && (
-              <div className="mt-3">
-                <Field label="Vigencia del contrato" hint="Fin del arriendo">
-                  <input type="date" value={vigencia} min={TODAY_STR} onChange={e => setVigencia(e.target.value)}
-                    className="w-full bg-white border border-stone-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-orange-600"/>
-                </Field>
-                <p className="text-[11px] text-amber-800 mt-2 flex gap-1.5">
-                  <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5"/>
-                  El sistema desactivará automáticamente los dispositivos al vencer el contrato. Reactivación requiere admin.
-                </p>
-              </div>
-            )}
           </div>
 
           {error && (
@@ -2280,14 +2322,14 @@ function CreateHouseModal({ onClose, onCreate, existing }) {
 
           <div className="bg-stone-100 border border-stone-200 rounded-lg p-3 text-xs text-stone-600 flex gap-2">
             <Lock className="w-3.5 h-3.5 shrink-0 mt-0.5 text-orange-700"/>
-            <p>Al crear la casa se enviará una invitación por email al titular con un código válido por 24h para vincular su primer dispositivo (máx. 2 por casa).</p>
+            <p>Después de crear la unidad podrás invitar a los residentes (máx. 2 por unidad) desde su ficha.</p>
           </div>
         </div>
 
         <div className="sticky bottom-0 bg-stone-50 px-6 py-4 border-t border-stone-200 flex gap-2">
           <button onClick={onClose} className="flex-1 border border-stone-300 rounded-lg py-3 text-sm font-medium text-stone-700 hover:bg-stone-100">Cancelar</button>
           <button onClick={submit} className="flex-1 bg-orange-600 hover:bg-orange-700 text-orange-50 rounded-lg py-3 text-sm font-medium">
-            Crear casa
+            Crear unidad
           </button>
         </div>
       </div>

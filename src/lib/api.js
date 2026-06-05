@@ -220,20 +220,20 @@ export async function fetchHouses() {
   const { data, error } = await supabase
     .from('houses')
     .select('*, devices(*)')
-    .order('manzana', { ascending: true })
-    .order('fase', { ascending: true })
     .order('numero', { ascending: true });
   if (error) fail('fetchHouses', error);
-  // Normalize to the shape App.jsx expects
   return (data || []).map(h => ({
     id: h.id,
     conjuntoId: h.conjunto_id,
-    manzana: h.manzana,
-    fase: h.fase,
-    numero: h.numero,
+    unitType: h.unit_type || 'casa',
+    numero: h.numero || '',
+    manzana: h.manzana || '',
+    fase: h.fase || '',
+    addressExtra: h.address_extra || '',
     owner: h.owner_name,
+    email: h.owner_email || '',
+    phone: h.owner_phone || '',
     tipo: h.tipo,
-    vigencia: h.vigencia,
     notes: h.notes,
     devices: (h.devices || []).map(d => ({
       id: d.id,
@@ -244,17 +244,22 @@ export async function fetchHouses() {
   }));
 }
 
-export async function createHouse({ manzana, fase, numero, owner, tipo, vigencia }) {
+export async function createHouse({ unitType, numero, manzana, fase, addressExtra, owner, email, phone, tipo }) {
   if (!USE_SUPABASE) return null;
   const conjunto = await fetchMyConjunto();
   const { data, error } = await supabase
     .from('houses')
     .insert({
-      conjunto_id: conjunto.id,
-      manzana, fase, numero,
-      owner_name: owner,
+      conjunto_id:  conjunto.id,
+      unit_type:    unitType || 'casa',
+      numero:       numero  || null,
+      manzana:      manzana || null,
+      fase:         fase    || null,
+      address_extra: addressExtra || null,
+      owner_name:   owner,
+      owner_email:  email || null,
+      owner_phone:  phone || null,
       tipo,
-      vigencia: tipo === 'arrendatario' ? vigencia : null,
     })
     .select()
     .single();
