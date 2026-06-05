@@ -106,22 +106,21 @@ export function onAuthChange(callback) {
 // See: /supabase/functions/activate-invitation/ (next deliverable)
 
 export async function activateInvitation({ code, password, deviceName }) {
-  if (!USE_SUPABASE) {
-    // Seed mode: emulate the Edge Function logic
-    return { _seed: true, code, password, deviceName };
-  }
+  if (!USE_SUPABASE) return { _seed: true, code, password, deviceName };
 
   const { data, error } = await supabase.functions.invoke('activate-invitation', {
     body: { code: code.trim().toUpperCase(), password, deviceName },
   });
   if (error) fail('activateInvitation', error);
-  if (!data?.session) fail('activateInvitation', new Error(data?.error || 'Activación falló.'));
+  if (!data?.ok) fail('activateInvitation', new Error(data?.error || 'Activación falló.'));
 
-  // Set the session in the client
-  await supabase.auth.setSession({
-    access_token:  data.session.access_token,
-    refresh_token: data.session.refresh_token,
+  // Iniciar sesión con la cuenta recién creada
+  const { error: signErr } = await supabase.auth.signInWithPassword({
+    email: data.email,
+    password,
   });
+  if (signErr) fail('activateInvitation/signIn', signErr);
+
   const profile = await fetchMyProfile();
   return { profile };
 }
