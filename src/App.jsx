@@ -742,14 +742,14 @@ function ActivationScreen({ onActivate, onBack, conjuntos }) {
   const [deviceName, setDeviceName] = useState('Mi dispositivo');
   const [error, setError] = useState('');
 
-  const submit = () => {
-    setError('');
-    if (!password || password.length < 4) return setError('La contraseña debe tener al menos 4 caracteres.');
-    if (password !== password2) return setError('Las contraseñas no coinciden.');
-    const r = onActivate({ code: code.trim(), password, deviceName: deviceName.trim() });
-    if (!r.ok) setError(r.error);
-    // On success, App switches to logged-in view
-  };
+  const submit = async () => {
+  setError('');
+  if (!password || password.length < 6) return setError('La contraseña debe tener al menos 6 caracteres.');
+  if (password !== password2) return setError('Las contraseñas no coinciden.');
+  const r = await onActivate({ code: code.trim(), password, deviceName: deviceName.trim() });
+  if (!r?.ok) setError(r?.error || 'No se pudo activar. Intenta de nuevo.');
+  // Si todo va bien, App cambia solo a la vista logueada.
+};
 
   const goToStep2 = () => {
     setError('');
