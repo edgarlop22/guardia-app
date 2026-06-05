@@ -460,29 +460,13 @@ export async function fetchInvitations() {
   return data || [];
 }
 
-export async function createInvitation({ email, role, houseId, adminLevel, shift }) {
+export async function createInvitation({ email, name, phone, role, houseId, adminLevel }) {
   if (!USE_SUPABASE) return null;
-  // The code is generated server-side via the Edge Function so it can use
-  // a secure RNG. For now, simple client-side fallback (overwritten by trigger if you add one).
-  const code = generateCode(role);
-  const conjunto = await fetchMyConjunto();
-  const profile  = await fetchMyProfile();
-
-  const { data, error } = await supabase
-    .from('invitations')
-    .insert({
-      conjunto_id: conjunto.id,
-      code,
-      email: email.trim().toLowerCase(),
-      role,
-      admin_level: adminLevel || null,
-      shift: shift || null,
-      house_id: houseId || null,
-      created_by: profile.id,
-    })
-    .select()
-    .single();
+  const { data, error } = await supabase.functions.invoke('send-invitation', {
+    body: { email, name, phone, role, houseId, adminLevel },
+  });
   if (error) fail('createInvitation', error);
+  if (!data?.ok) fail('createInvitation', new Error(data?.error || 'Falló la invitación.'));
   return data;
 }
 
