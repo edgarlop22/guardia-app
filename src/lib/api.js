@@ -471,7 +471,15 @@ export async function createInvitation({ email, name, phone, role, houseId, admi
   });
   if (error) fail('createInvitation', error);
   if (!data?.ok) fail('createInvitation', new Error(data?.error || 'Falló la invitación.'));
-  return data;
+
+  // Traer la fila completa para una forma consistente (la usa la UI).
+  const { data: row } = await supabase
+    .from('invitations')
+    .select('*')
+    .eq('code', data.code)
+    .maybeSingle();
+
+  return { ...(row || { code: data.code, email, role, house_id: houseId }), emailSent: data.emailSent };
 }
 
 export async function revokeInvitation(code) {

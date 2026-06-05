@@ -250,6 +250,7 @@ function mapProfileToUser(profile, authUser) {
     shift: profile.shift,
     houseId: profile.house_id,
     deviceId: profile.device_id,
+    phone: profile.phone,
     active: profile.active,
   };
 }
@@ -2041,7 +2042,7 @@ function AdminView({ houses, setHouses, auths, logs, addLog,
         })}
       </div>
 
-      {tab === 'houses'      && <HousesPanel houses={houses} setHouses={setHouses} addLog={addLog} currentConjunto={currentConjunto}/>}
+      {tab === 'houses'      && <HousesPanel houses={houses} setHouses={setHouses} users={users} invitations={invitations} setInvitations={setInvitations} addLog={addLog} currentConjunto={currentConjunto}/>}
       {tab === 'users'       && <UsersPanel users={users} setUsers={setUsers} houses={houses} currentUser={currentUser} addLog={addLog}/>}
       {tab === 'invitations' && <InvitationsPanel invitations={invitations} setInvitations={setInvitations}
                                                   houses={houses} users={users} currentConjunto={currentConjunto}
@@ -2063,123 +2064,182 @@ function Stat({ label, value }) {
   );
 }
 
-function HousesPanel({ houses, setHouses, addLog, currentConjunto }) {
-  const [adding, setAdding] = useState(null);
-  const [name, setName] = useState('');
-  const [showCreate, setShowCreate] = useState(false);
-
-  const removeDevice = (houseId, deviceId, deviceName) => {
-    setHouses(prev => prev.map(h => h.id === houseId
-      ? { ...h, devices: h.devices.filter(d => d.id !== deviceId) }
-      : h));
-    addLog('device_removed', 'Admin', `Dispositivo revocado: ${deviceName}`);
-  };
-
-  const addDevice = (houseId) => {
-    if (!name.trim()) return;
-    setHouses(prev => prev.map(h => h.id === houseId
-      ? { ...h, devices: [...h.devices, { id: 'd'+Date.now(), name, fingerprint: Math.random().toString(36).slice(2,6).toUpperCase()+'-'+Math.random().toString(36).slice(2,6).toUpperCase(), addedAt: TODAY_STR }] }
-      : h));
-    addLog('device_added', 'Admin', `Dispositivo agregado: ${name}`);
-    setName(''); setAdding(null);
-  };
+function HousesPanel({ houses, setHouses, users, invitations, setInvitations, addLog, currentConjunto }) {
+  const [showCreate, setShowCreate]       = useState(false);
+  const [invitingHouse, setInvitingHouse] = useState(null);
+  const [form, setForm]                   = useState({ name: '', email: '', phone: '' });
+  const [formError, setFormError]         = useState('');
+  const [lastInvite, setLastInvite]       = useState(null);
+  const [busy, setBusy]                   = useState(false);
 
   const createHouse = async (data) => {
     if (USE_SUPABASE) {
       try {
         const row = await api.createHouse(data);
-        if (!row) throw new Error('No se pudo crear la casa');
-        // Normalize Supabase row to UI shape
+        if (!row) throw new Error('No se pudo crear la unidad');
         const newHouse = {
-          id: row.id,
-          conjuntoId: row.conjunto_id,
-          unitType: row.unit_type || 'casa',
-          numero: row.numero || '',
-          manzana: row.manzana || '',
-          fase: row.fase || '',
-          addressExtra: row.address_extra || '',
-          owner: row.owner_name,
-          email: row.owner_email || '',
-          phone: row.owner_phone || '',
-          tipo: row.tipo,
-          devices: [],
+          id: row.id, conjuntoId: row.conjunto_id, unitType: row.unit_type || 'casa',
+          numero: row.numero || '', manzana: row.manzana || '', fase: row.fase || '',
+          addressExtra: row.address_extra || '', owner: row.owner_name,
+          email: row.owner_email || '', phone: row.owner_phone || '',
+          tipo: row.tipo, devices: [],
         };
         setHouses(prev => [...prev, newHouse]);
-        addLog('house_created', 'Admin',
-          `Casa creada: ${houseLabel(newHouse)} · ${data.owner} (${data.tipo})`);
+        addLog('house_created', 'Admin', `Unidad creada: ${houseLabel(newHouse)} · ${data.owner}`);
         setShowCreate(false);
       } catch (e) {
         console.error('[createHouse]', e);
-        alert('Error al crear la casa: ' + e.message);
+        alert('Error al crear la unidad: ' + e.message);
       }
       return;
     }
-    // Seed mode fallback
     const id = 'h' + Date.now();
-    const newHouse = { id, conjuntoId: currentConjunto.id, ...data, devices: [] };
+    const newHouse = { id, conjuntoId: currentConjunto?.id, ...data, devices: [] };
     setHouses(prev => [...prev, newHouse]);
-    addLog('house_created', 'Admin',
-      `Casa creada: ${houseLabel(newHouse)} · ${data.owner} (${data.tipo})`);
     setShowCreate(false);
   };
+
+  const houseUsers   = (hid) => (users || []).filter(u => u.houseId === hid && u.role === 'resident' && u.active !== false);
+  const housePending = (hid) => (invitations || []).filter(i => i.houseId === hid && i.role === 'resident' && !i.used);
+
+  const openInvite = (hid) => {
+    setInvitingHouse(hid);
+    setForm({ name: '', email: '', phone: '' });
+    setFormError(''); setLastInvite(null);
+  };
+
+  const sendInvite = async (hid) => {
+    setFormError('');
+    if (!form.name.trim()) return setFormError('Nombre del residente requerido.');
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) return setFormError('Correo inválido.');
+    if (!USE_SUPABASE) return setFormError('Disponible solo con backend activo.');
+    setBusy(true);
+    try {
+      const row = await api.createInvitation({
+        email: form.email.trim().toLowerCase(),
+        name: form.name.trim(),
+        phone: form.phone.trim(),
+        role: 'resident',
+        houseId: hid,
+      });
+      setInvitations(prev => [{
+        code: row.code, conjuntoId: row.conjunto_id, email: row.email,
+        name: row.name, phone: row.phone, role: row.role, houseId: row.house_id,
+        used: row.used || false, createdAt: row.created_at, expiresAt: row.expires_at,
+      }, ...prev]);
+      addLog('invitation_created', 'Admin', `Invitación residente · ${form.email} · ${row.code}`);
+      setLastInvite({ houseId: hid, code: row.code, emailSent: row.emailSent });
+      setInvitingHouse(null);
+    } catch (e) {
+      setFormError(e.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const cancelPending = async (code) => {
+    if (!window.confirm('¿Cancelar esta invitación pendiente?')) return;
+    if (USE_SUPABASE) {
+      try { await api.revokeInvitation(code); }
+      catch (e) { alert('Error al cancelar: ' + e.message); return; }
+    }
+    setInvitations(prev => prev.filter(i => i.code !== code));
+    addLog('invitation_revoked', 'Admin', `Invitación cancelada · ${code}`);
+  };
+
+  const copy = (t) => { try { navigator.clipboard.writeText(t); } catch {} };
 
   return (
     <div className="space-y-3">
       <button onClick={() => setShowCreate(true)}
         className="w-full bg-stone-900 hover:bg-stone-800 text-stone-50 rounded-xl py-3 flex items-center justify-center gap-2 font-medium transition">
-        <Plus className="w-4 h-4"/> Crear casa / residente
+        <Plus className="w-4 h-4"/> Crear unidad / residente
       </button>
 
       {houses.map(h => {
-        const full = h.devices.length >= 2;
+        const activeU = houseUsers(h.id);
+        const pending = housePending(h.id);
+        const count   = activeU.length + pending.length;
+        const full    = count >= 2;
         return (
           <div key={h.id} className="bg-white rounded-xl border border-stone-200 p-4">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-stone-900 text-stone-50 tracking-widest">
-                    {houseLabel(h)}
-                  </span>
-                  <TipoBadge tipo={h.tipo} vigencia={h.vigencia} />
+                  <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-stone-900 text-stone-50 tracking-widest">{houseLabel(h)}</span>
+                  <TipoBadge tipo={h.tipo} vigencia={h.vigencia}/>
                 </div>
                 <p className="font-display text-xl mt-1.5">{h.owner}</p>
                 <p className="font-mono text-[10px] text-stone-500 mt-0.5">
                   {houseLong(h)}{h.addressExtra ? ` · ${h.addressExtra}` : ''}
                 </p>
                 {(h.email || h.phone) && (
-                  <p className="font-mono text-[10px] text-stone-400 mt-0.5">
-                    {[h.email, h.phone].filter(Boolean).join(' · ')}
-                  </p>
+                  <p className="font-mono text-[10px] text-stone-400 mt-0.5">{[h.email, h.phone].filter(Boolean).join(' · ')}</p>
                 )}
               </div>
-              <span className={`shrink-0 text-[10px] font-mono px-2 py-1 rounded ${full ? 'bg-amber-100 text-amber-900' : 'bg-orange-100 text-orange-600'}`}>
-                {h.devices.length}/2 disp.
-              </span>
+              <span className={`shrink-0 text-[10px] font-mono px-2 py-1 rounded ${full ? 'bg-amber-100 text-amber-900' : 'bg-orange-100 text-orange-600'}`}>{count}/2 usuarios</span>
             </div>
-            <div className="space-y-2 mt-3">
-              {h.devices.map(d => (
-                <div key={d.id} className="flex items-center gap-3 bg-stone-50 rounded-lg px-3 py-2">
-                  <Smartphone className="w-4 h-4 text-stone-500"/>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">{d.name}</p>
-                    <p className="text-[10px] font-mono text-stone-500">{d.fingerprint} · desde {fmtDate(d.addedAt)}</p>
+
+            <div className="mt-3 space-y-2">
+              {activeU.map(u => {
+                const dev = (h.devices || []).find(d => d.id === u.deviceId);
+                return (
+                  <div key={u.id} className="flex items-center gap-3 bg-stone-50 rounded-lg px-3 py-2">
+                    <UserCheck className="w-4 h-4 text-green-700 shrink-0"/>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{u.name}</p>
+                      <p className="text-[10px] font-mono text-stone-500 truncate">{[u.phone || '—', dev ? dev.name : 'sin dispositivo'].join(' · ')}</p>
+                    </div>
+                    <span className="text-[10px] font-mono text-green-700 bg-green-100 px-1.5 py-0.5 rounded">activo</span>
                   </div>
-                  <button onClick={() => removeDevice(h.id, d.id, d.name)} className="text-stone-400 hover:text-red-700">
-                    <Trash2 className="w-4 h-4"/>
-                  </button>
+                );
+              })}
+
+              {pending.map(i => (
+                <div key={i.code} className="flex items-center gap-3 bg-amber-50 rounded-lg px-3 py-2 border border-amber-200">
+                  <Clock className="w-4 h-4 text-amber-700 shrink-0"/>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{i.name || i.email}</p>
+                    <p className="text-[10px] font-mono text-stone-500 truncate">{i.email} · código {i.code}</p>
+                  </div>
+                  <button onClick={() => copy(i.code)} className="text-stone-400 hover:text-stone-700" title="Copiar código"><Hash className="w-4 h-4"/></button>
+                  <button onClick={() => cancelPending(i.code)} className="text-stone-400 hover:text-red-700" title="Cancelar invitación"><Trash2 className="w-4 h-4"/></button>
                 </div>
               ))}
-              {adding === h.id ? (
-                <div className="flex gap-2">
-                  <input value={name} onChange={e => setName(e.target.value)} placeholder="Nombre del dispositivo"
-                    className="flex-1 bg-white border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-orange-600"/>
-                  <button onClick={() => addDevice(h.id)} className="bg-orange-600 text-orange-50 px-3 rounded-lg text-sm">OK</button>
-                  <button onClick={() => { setAdding(null); setName(''); }} className="text-stone-400 px-2 text-sm">×</button>
+
+              {lastInvite && lastInvite.houseId === h.id && (
+                <div className="bg-stone-900 text-stone-50 rounded-lg px-3 py-2.5 text-xs">
+                  <p className="font-medium mb-1">Invitación creada · código <span className="font-mono text-orange-400">{lastInvite.code}</span></p>
+                  <p className="text-stone-400">
+                    {lastInvite.emailSent
+                      ? 'Se envió el correo al residente.'
+                      : 'El correo no se entregó (falta verificar dominio). Comparte el código por WhatsApp.'}
+                  </p>
+                </div>
+              )}
+
+              {invitingHouse === h.id ? (
+                <div className="border border-stone-300 rounded-lg p-3 space-y-2">
+                  <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Nombre completo"
+                    className="w-full bg-white border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-orange-600"/>
+                  <input type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} placeholder="Correo electrónico"
+                    className="w-full bg-white border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-orange-600"/>
+                  <input value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} placeholder="Teléfono (opcional)"
+                    className="w-full bg-white border border-stone-300 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:border-orange-600"/>
+                  {formError && <p className="text-xs text-red-700">{formError}</p>}
+                  <div className="flex gap-2">
+                    <button disabled={busy} onClick={() => sendInvite(h.id)}
+                      className="flex-1 bg-orange-600 hover:bg-orange-700 disabled:opacity-60 text-orange-50 rounded-lg py-2 text-sm font-medium">
+                      {busy ? 'Enviando…' : 'Enviar invitación'}
+                    </button>
+                    <button onClick={() => setInvitingHouse(null)} className="px-3 text-stone-400 text-sm">Cancelar</button>
+                  </div>
                 </div>
               ) : (
                 !full && (
-                  <button onClick={() => setAdding(h.id)} className="w-full border border-dashed border-stone-300 rounded-lg py-2 text-sm text-stone-500 hover:border-stone-400 flex items-center justify-center gap-1">
-                    <Plus className="w-4 h-4"/> Agregar dispositivo
+                  <button onClick={() => openInvite(h.id)}
+                    className="w-full border border-dashed border-stone-300 rounded-lg py-2 text-sm text-stone-500 hover:border-stone-400 flex items-center justify-center gap-1">
+                    <UserPlus className="w-4 h-4"/> Invitar residente
                   </button>
                 )
               )}
@@ -2189,11 +2249,7 @@ function HousesPanel({ houses, setHouses, addLog, currentConjunto }) {
       })}
 
       {showCreate && (
-        <CreateHouseModal
-          onClose={() => setShowCreate(false)}
-          onCreate={createHouse}
-          existing={houses}
-        />
+        <CreateHouseModal onClose={() => setShowCreate(false)} onCreate={createHouse} existing={houses}/>
       )}
     </div>
   );
