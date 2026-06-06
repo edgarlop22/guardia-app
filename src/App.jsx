@@ -1994,7 +1994,12 @@ function AdminView({ houses, setHouses, auths, logs, addLog,
                      invitations, setInvitations, currentUser, currentConjunto }) {
   const [tab, setTab] = useState('houses');
   const isPrincipal = currentUser.adminLevel === 1;
-    // Cargar datos reales del backend al entrar al admin
+
+  // Estado propio del admin, cargado directo del backend (inmune a datos semilla)
+  const [aHouses, setAHouses]   = useState(houses);
+  const [aUsers, setAUsers]     = useState(USE_SUPABASE ? [] : users);
+  const [aInvites, setAInvites] = useState(USE_SUPABASE ? [] : invitations);
+
   useEffect(() => {
     if (!USE_SUPABASE) return;
     (async () => {
@@ -2004,13 +2009,14 @@ function AdminView({ houses, setHouses, auths, logs, addLog,
           api.fetchUsersInConjunto(),
           api.fetchInvitations(),
         ]);
-        setHouses(hs);
-        setUsers(profs.map(p => ({
+        setAHouses(hs);
+        setHouses(hs); // mantener el resto de la app consistente
+        setAUsers(profs.map(p => ({
           id: p.id, email: p.email, name: p.name, role: p.role,
           conjuntoId: p.conjunto_id, adminLevel: p.admin_level, shift: p.shift,
           houseId: p.house_id, deviceId: p.device_id, phone: p.phone, active: p.active,
         })));
-        setInvitations(invs.map(i => ({
+        setAInvites(invs.map(i => ({
           code: i.code, conjuntoId: i.conjunto_id, email: i.email, name: i.name,
           phone: i.phone, role: i.role, houseId: i.house_id, adminLevel: i.admin_level,
           used: i.used, createdAt: i.created_at, expiresAt: i.expires_at,
@@ -2020,6 +2026,7 @@ function AdminView({ houses, setHouses, auths, logs, addLog,
       }
     })();
   }, []);
+
   return (
     <div className="space-y-5">
       <div className="bg-black text-orange-50 rounded-2xl p-5 border-2 border-orange-500 shadow-lg shadow-orange-500/10">
@@ -2038,21 +2045,21 @@ function AdminView({ houses, setHouses, auths, logs, addLog,
           </div>
         </div>
         <div className="grid grid-cols-4 gap-3 mt-4">
-          <Stat label="Casas" value={houses.length}/>
-          <Stat label="Usuarios" value={users.filter(u => u.active).length}/>
-          <Stat label="Disp." value={houses.reduce((s,h) => s + h.devices.length, 0)}/>
+          <Stat label="Casas" value={aHouses.length}/>
+          <Stat label="Usuarios" value={aUsers.filter(u => u.active !== false).length}/>
+          <Stat label="Disp." value={aHouses.reduce((s, h) => s + (h.devices?.length || 0), 0)}/>
           <Stat label="Autoriz." value={auths.length}/>
         </div>
       </div>
 
       <div className="flex gap-1 overflow-x-auto -mx-1 px-1">
         {[
-          { id: 'houses',      label: 'Casas',       icon: Home },
-          { id: 'users',       label: 'Usuarios',    icon: Users },
-          { id: 'invitations', label: 'Invitaciones',icon: Mail },
-          { id: 'risks',       label: 'Seguridad',   icon: ShieldAlert },
-          { id: 'logs',        label: 'Auditoría',   icon: Activity },
-          { id: 'config',      label: 'Config.',     icon: Settings },
+          { id: 'houses',      label: 'Casas',        icon: Home },
+          { id: 'users',       label: 'Usuarios',     icon: Users },
+          { id: 'invitations', label: 'Invitaciones', icon: Mail },
+          { id: 'risks',       label: 'Seguridad',    icon: ShieldAlert },
+          { id: 'logs',        label: 'Auditoría',    icon: Activity },
+          { id: 'config',      label: 'Config.',      icon: Settings },
         ].map(t => {
           const Icon = t.icon;
           const active = tab === t.id;
@@ -2067,12 +2074,12 @@ function AdminView({ houses, setHouses, auths, logs, addLog,
         })}
       </div>
 
-      {tab === 'houses'      && <HousesPanel houses={houses} setHouses={setHouses} users={users} invitations={invitations} setInvitations={setInvitations} addLog={addLog} currentConjunto={currentConjunto}/>}
-      {tab === 'users'       && <UsersPanel users={users} setUsers={setUsers} houses={houses} currentUser={currentUser} addLog={addLog}/>}
-      {tab === 'invitations' && <InvitationsPanel invitations={invitations} setInvitations={setInvitations}
-                                                  houses={houses} users={users} currentConjunto={currentConjunto}
+      {tab === 'houses'      && <HousesPanel houses={aHouses} setHouses={setAHouses} users={aUsers} invitations={aInvites} setInvitations={setAInvites} addLog={addLog} currentConjunto={currentConjunto}/>}
+      {tab === 'users'       && <UsersPanel users={aUsers} setUsers={setAUsers} houses={aHouses} currentUser={currentUser} addLog={addLog}/>}
+      {tab === 'invitations' && <InvitationsPanel invitations={aInvites} setInvitations={setAInvites}
+                                                  houses={aHouses} users={aUsers} currentConjunto={currentConjunto}
                                                   currentUser={currentUser} addLog={addLog}/>}
-      {tab === 'risks'       && <RisksPanel auths={auths} houses={houses}/>}
+      {tab === 'risks'       && <RisksPanel auths={auths} houses={aHouses}/>}
       {tab === 'logs'        && <LogsPanel logs={logs}/>}
       {tab === 'config'      && <ConfigPanel currentConjunto={currentConjunto} setConjuntos={setConjuntos}
                                              addLog={addLog} currentUser={currentUser}/>}
