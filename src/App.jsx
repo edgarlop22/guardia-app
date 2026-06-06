@@ -2074,7 +2074,7 @@ function AdminView({ houses, setHouses, auths, logs, addLog,
         })}
       </div>
 
-      {tab === 'houses'      && <HousesPanel houses={aHouses} setHouses={setAHouses} users={aUsers} invitations={aInvites} setInvitations={setAInvites} addLog={addLog} currentConjunto={currentConjunto}/>}
+      {tab === 'houses'      && <HousesPanel houses={aHouses} setHouses={setAHouses} users={aUsers} setUsers={setAUsers} invitations={aInvites} setInvitations={setAInvites} addLog={addLog} currentConjunto={currentConjunto}/>}
       {tab === 'users'       && <UsersPanel users={aUsers} setUsers={setAUsers} houses={aHouses} currentUser={currentUser} addLog={addLog}/>}
       {tab === 'invitations' && <InvitationsPanel invitations={aInvites} setInvitations={setAInvites}
                                                   houses={aHouses} users={aUsers} currentConjunto={currentConjunto}
@@ -2096,7 +2096,7 @@ function Stat({ label, value }) {
   );
 }
 
-function HousesPanel({ houses, setHouses, users, invitations, setInvitations, addLog, currentConjunto }) {
+function HousesPanel({ houses, setHouses, users, setUsers, invitations, setInvitations, addLog, currentConjunto }) {
   const [showCreate, setShowCreate]       = useState(false);
   const [invitingHouse, setInvitingHouse] = useState(null);
   const [form, setForm]                   = useState({ name: '', email: '', phone: '' });
@@ -2181,6 +2181,22 @@ function HousesPanel({ houses, setHouses, users, invitations, setInvitations, ad
 
   const copy = (t) => { try { navigator.clipboard.writeText(t); } catch {} };
 
+  const copy = (t) => { try { navigator.clipboard.writeText(t); } catch {} };
+
+  const removeUser = async (u, hid) => {
+    if (!window.confirm(`¿Eliminar a ${u.name} de esta unidad? No se puede deshacer.`)) return;
+    try {
+      const r = await api.removeResident(u.id);
+      setUsers(prev => prev.filter(x => x.id !== u.id));
+      setHouses(prev => prev.map(h => h.id === hid
+        ? { ...h, devices: (h.devices || []).filter(d => d.id !== u.deviceId) } : h));
+      addLog('user_removed', 'Admin', `Residente eliminado · ${u.name}`);
+      if (r?.mode === 'deactivated') alert(`${u.name} tenía historial de visitas: se desactivó y se liberó el cupo (no se borró para conservar el registro).`);
+    } catch (e) {
+      alert('Error al eliminar: ' + e.message);
+    }
+  };
+
   return (
     <div className="space-y-3">
       <button onClick={() => setShowCreate(true)}
@@ -2223,6 +2239,7 @@ function HousesPanel({ houses, setHouses, users, invitations, setInvitations, ad
                       <p className="text-[10px] font-mono text-stone-500 truncate">{[u.phone || '—', dev ? dev.name : 'sin dispositivo'].join(' · ')}</p>
                     </div>
                     <span className="text-[10px] font-mono text-green-700 bg-green-100 px-1.5 py-0.5 rounded">activo</span>
+                    <button onClick={() => removeUser(u, h.id)} className="text-stone-400 hover:text-red-700" title="Eliminar usuario"><Trash2 className="w-4 h-4"/></button>
                   </div>
                 );
               })}

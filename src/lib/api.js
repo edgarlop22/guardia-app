@@ -491,6 +491,14 @@ export async function revokeInvitation(code) {
   if (error) fail('revokeInvitation', error);
 }
 
+export async function removeResident(userId) {
+  if (!USE_SUPABASE) return { ok: true };
+  const { data, error } = await supabase.functions.invoke('remove-resident', { body: { userId } });
+  if (error) fail('removeResident', error);
+  if (!data?.ok) fail('removeResident', new Error(data?.error || 'No se pudo eliminar.'));
+  return data;
+}
+
 // ============================================================
 // AUDIT LOG
 // ============================================================
