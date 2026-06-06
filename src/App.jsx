@@ -1994,7 +1994,32 @@ function AdminView({ houses, setHouses, auths, logs, addLog,
                      invitations, setInvitations, currentUser, currentConjunto }) {
   const [tab, setTab] = useState('houses');
   const isPrincipal = currentUser.adminLevel === 1;
-
+    // Cargar datos reales del backend al entrar al admin
+  useEffect(() => {
+    if (!USE_SUPABASE) return;
+    (async () => {
+      try {
+        const [hs, profs, invs] = await Promise.all([
+          api.fetchHouses(),
+          api.fetchUsersInConjunto(),
+          api.fetchInvitations(),
+        ]);
+        setHouses(hs);
+        setUsers(profs.map(p => ({
+          id: p.id, email: p.email, name: p.name, role: p.role,
+          conjuntoId: p.conjunto_id, adminLevel: p.admin_level, shift: p.shift,
+          houseId: p.house_id, deviceId: p.device_id, phone: p.phone, active: p.active,
+        })));
+        setInvitations(invs.map(i => ({
+          code: i.code, conjuntoId: i.conjunto_id, email: i.email, name: i.name,
+          phone: i.phone, role: i.role, houseId: i.house_id, adminLevel: i.admin_level,
+          used: i.used, createdAt: i.created_at, expiresAt: i.expires_at,
+        })));
+      } catch (e) {
+        console.error('[AdminView load]', e);
+      }
+    })();
+  }, []);
   return (
     <div className="space-y-5">
       <div className="bg-black text-orange-50 rounded-2xl p-5 border-2 border-orange-500 shadow-lg shadow-orange-500/10">
