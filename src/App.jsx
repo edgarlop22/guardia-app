@@ -2181,11 +2181,9 @@ function HousesPanel({ houses, setHouses, users, setUsers, invitations, setInvit
     addLog('invitation_revoked', 'Admin', `Invitación cancelada · ${code}`);
   };
 
-  const copy = (t) => { try { navigator.clipboard.writeText(t); } catch {} };
+   const copy = (t) => { try { navigator.clipboard.writeText(t); } catch {} };
 
-  const copy = (t) => { try { navigator.clipboard.writeText(t); } catch {} };
-
-  const removeUser = async (u, hid) => {
+   const removeUser = async (u, hid) => {
     if (!window.confirm(`¿Eliminar a ${u.name} de esta unidad? No se puede deshacer.`)) return;
     try {
       const r = await api.removeResident(u.id);
