@@ -2004,6 +2004,8 @@ function AdminView({ houses, setHouses, auths, logs, addLog,
     if (!USE_SUPABASE) return;
     (async () => {
       try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) { console.warn('[AdminView load] sesión no lista'); return; }
         const [hs, profs, invs] = await Promise.all([
           api.fetchHouses(),
           api.fetchUsersInConjunto(),
