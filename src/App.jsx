@@ -1987,6 +1987,220 @@ function CheckRow({ checked, onClick, icon: Icon, label }) {
 }
 
 // ============================================================
+// USUARIOS ADMINISTRATIVOS (Garita + Administrador)
+// ============================================================
+function AdminUsersPanel({ users, invitations, setInvitations, addLog, currentConjunto }) {
+  const [sub, setSub] = useState('garita');
+
+  // ---- Garita ----
+  const [gateService, setGateService] = useState('propio');
+  const [company, setCompany] = useState('');
+  const [guards, setGuards]   = useState([]);
+  const [gName, setGName]     = useState('');
+  const [gDoc, setGDoc]       = useState('');
+  const [gErr, setGErr]       = useState('');
+
+  useEffect(() => {
+    if (!USE_SUPABASE) return;
+    (async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) return;
+        const cfg = await api.fetchGateConfig();
+        setGateService(cfg.gateService);
+        setCompany(cfg.securityCompany || '');
+        setGuards(await api.fetchGuards());
+      } catch (e) { console.error('[gate load]', e); }
+    })();
+  }, []);
+
+  const changeService = async (val) => {
+    setGateService(val);
+    try { await api.updateGateConfig({ gateService: val }); } catch (e) { alert('Error: ' + e.message); }
+  };
+  const saveCompany = async () => {
+    try { await api.updateGateConfig({ securityCompany: company }); } catch (e) { alert('Error: ' + e.message); }
+  };
+  const addGuard = async () => {
+    setGErr('');
+    if (!gName.trim()) return setGErr('Nombre del guardia requerido.');
+    try {
+      const g = await api.createGuard({ name: gName.trim(), doc: gDoc.trim() });
+      setGuards(prev => [...prev, g]); setGName(''); setGDoc('');
+      addLog('guard_added', 'Admin', `Guardia agregado · ${g.name}`);
+    } catch (e) { setGErr(e.message); }
+  };
+  const toggleGuard = async (g) => {
+    try {
+      await api.updateGuard(g.id, { active: !g.active });
+      setGuards(prev => prev.map(x => x.id === g.id ? { ...x, active: !x.active } : x));
+    } catch (e) { alert('Error: ' + e.message); }
+  };
+  const removeGuard = async (g) => {
+    if (!window.confirm(`¿Eliminar al guardia ${g.name}?`)) return;
+    try {
+      await api.deleteGuard(g.id);
+      setGuards(prev => prev.filter(x => x.id !== g.id));
+      addLog('guard_removed', 'Admin', `Guardia eliminado · ${g.name}`);
+    } catch (e) { alert('Error: ' + e.message); }
+  };
+
+  // ---- Administrador ----
+  const admins = (users || []).filter(u => u.role === 'admin' && u.active !== false);
+  const pendingAdmins = (invitations || []).filter(i => i.role === 'admin' && !i.used);
+  const [aName, setAName]   = useState('');
+  const [aEmail, setAEmail] = useState('');
+  const [aPhone, setAPhone] = useState('');
+  const [aErr, setAErr]     = useState('');
+  const [aBusy, setABusy]   = useState(false);
+  const [aLast, setALast]   = useState(null);
+
+  const inviteAdmin = async () => {
+    setAErr('');
+    if (!aName.trim()) return setAErr('Nombre requerido.');
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(aEmail.trim())) return setAErr('Correo inválido.');
+    setABusy(true);
+    try {
+      const row = await api.createInvitation({
+        email: aEmail.trim().toLowerCase(), name: aName.trim(), phone: aPhone.trim(),
+        role: 'admin', adminLevel: 2,
+      });
+      setInvitations(prev => [{
+        code: row.code, conjuntoId: row.conjunto_id, email: row.email, name: row.name,
+        phone: row.phone, role: row.role, houseId: row.house_id, adminLevel: row.admin_level,
+        used: row.used || false, createdAt: row.created_at, expiresAt: row.expires_at,
+      }, ...prev]);
+      addLog('invitation_created', 'Admin', `Invitación admin · ${aEmail}`);
+      setALast({ code: row.code, emailSent: row.emailSent });
+      setAName(''); setAEmail(''); setAPhone('');
+    } catch (e) { setAErr(e.message); } finally { setABusy(false); }
+  };
+  const cancelAdminInvite = async (code) => {
+    if (!window.confirm('¿Cancelar esta invitación?')) return;
+    try { await api.revokeInvitation(code); setInvitations(prev => prev.filter(i => i.code !== code)); }
+    catch (e) { alert('Error: ' + e.message); }
+  };
+  const copy = (t) => { try { navigator.clipboard.writeText(t); } catch {} };
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 gap-2">
+        <button onClick={() => setSub('garita')}
+          className={`p-3 rounded-xl border text-left transition ${sub==='garita' ? 'border-orange-600 bg-orange-600 text-orange-50' : 'border-stone-300 bg-white text-stone-700'}`}>
+          <Shield className="w-4 h-4 mb-1"/><p className="text-sm font-medium">Garita</p>
+          <p className={`text-[11px] ${sub==='garita'?'text-orange-200':'text-stone-500'}`}>Vigilancia</p>
+        </button>
+        <button onClick={() => setSub('admin')}
+          className={`p-3 rounded-xl border text-left transition ${sub==='admin' ? 'border-orange-600 bg-orange-600 text-orange-50' : 'border-stone-300 bg-white text-stone-700'}`}>
+          <Crown className="w-4 h-4 mb-1"/><p className="text-sm font-medium">Administrador</p>
+          <p className={`text-[11px] ${sub==='admin'?'text-orange-200':'text-stone-500'}`}>Del residencial</p>
+        </button>
+      </div>
+
+      {sub === 'garita' ? (
+        <div className="space-y-4">
+          <div className="bg-white rounded-xl border border-stone-200 p-4 space-y-3">
+            <p className="font-mono text-[10px] uppercase tracking-wider text-stone-600">Servicio de vigilancia</p>
+            <div className="grid grid-cols-2 gap-2">
+              <TypePill active={gateService==='propio'} onClick={() => changeService('propio')} icon={Shield} label="Propio" desc="Personal del residencial"/>
+              <TypePill active={gateService==='externo'} onClick={() => changeService('externo')} icon={Building2} label="Externo" desc="Empresa de vigilancia"/>
+            </div>
+            {gateService==='externo' && (
+              <Field label="Empresa de vigilancia">
+                <input value={company} onChange={e=>setCompany(e.target.value)} onBlur={saveCompany}
+                  placeholder="Nombre de la empresa"
+                  className="w-full bg-white border border-stone-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-orange-600"/>
+              </Field>
+            )}
+          </div>
+
+          <div className="bg-white rounded-xl border border-stone-200 p-4">
+            <p className="font-mono text-[10px] uppercase tracking-wider text-stone-600 mb-3">Guardias autorizados</p>
+            <div className="space-y-2">
+              {guards.length === 0 && <p className="text-sm text-stone-400">Sin guardias registrados.</p>}
+              {guards.map(g => (
+                <div key={g.id} className="flex items-center gap-3 bg-stone-50 rounded-lg px-3 py-2">
+                  <UserCheck className={`w-4 h-4 shrink-0 ${g.active ? 'text-green-700' : 'text-stone-400'}`}/>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{g.name}</p>
+                    {g.doc && <p className="text-[10px] font-mono text-stone-500">{g.doc}</p>}
+                  </div>
+                  <button onClick={() => toggleGuard(g)}
+                    className={`text-[10px] font-mono px-1.5 py-0.5 rounded ${g.active ? 'bg-green-100 text-green-700' : 'bg-stone-200 text-stone-500'}`}>
+                    {g.active ? 'vigente' : 'inactivo'}
+                  </button>
+                  <button onClick={() => removeGuard(g)} className="text-stone-400 hover:text-red-700"><Trash2 className="w-4 h-4"/></button>
+                </div>
+              ))}
+            </div>
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              <input value={gName} onChange={e=>setGName(e.target.value)} placeholder="Nombre del guardia"
+                className="bg-white border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-orange-600"/>
+              <input value={gDoc} onChange={e=>setGDoc(e.target.value)} placeholder="Documento (opcional)"
+                className="bg-white border border-stone-300 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:border-orange-600"/>
+            </div>
+            {gErr && <p className="text-xs text-red-700 mt-2">{gErr}</p>}
+            <button onClick={addGuard} className="w-full mt-2 border border-dashed border-stone-300 rounded-lg py-2 text-sm text-stone-600 hover:border-stone-400 flex items-center justify-center gap-1">
+              <Plus className="w-4 h-4"/> Agregar guardia
+            </button>
+            <p className="text-[11px] text-stone-400 mt-2">Los guardias no tienen cuenta ni login. La garita usará un dispositivo compartido (tablet) y elegirá quién está activo.</p>
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          <div className="bg-white rounded-xl border border-stone-200 p-4">
+            <p className="font-mono text-[10px] uppercase tracking-wider text-stone-600 mb-3">Administradores</p>
+            <div className="space-y-2">
+              {admins.map(u => (
+                <div key={u.id} className="flex items-center gap-3 bg-stone-50 rounded-lg px-3 py-2">
+                  {u.adminLevel === 1 ? <Crown className="w-4 h-4 text-orange-600 shrink-0"/> : <KeyRound className="w-4 h-4 text-stone-500 shrink-0"/>}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{u.name}</p>
+                    <p className="text-[10px] font-mono text-stone-500 truncate">{[u.email, u.phone].filter(Boolean).join(' · ')}</p>
+                  </div>
+                  <span className="text-[10px] font-mono text-stone-500">{u.adminLevel === 1 ? 'principal' : 'delegado'}</span>
+                </div>
+              ))}
+              {pendingAdmins.map(i => (
+                <div key={i.code} className="flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                  <Clock className="w-4 h-4 text-amber-700 shrink-0"/>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{i.name || i.email}</p>
+                    <p className="text-[10px] font-mono text-stone-500 truncate">{i.email} · código {i.code}</p>
+                  </div>
+                  <button onClick={() => copy(i.code)} className="text-stone-400 hover:text-stone-700"><Hash className="w-4 h-4"/></button>
+                  <button onClick={() => cancelAdminInvite(i.code)} className="text-stone-400 hover:text-red-700"><Trash2 className="w-4 h-4"/></button>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="bg-white rounded-xl border border-stone-200 p-4 space-y-2">
+            <p className="font-mono text-[10px] uppercase tracking-wider text-stone-600 mb-1">Invitar administrador</p>
+            <input value={aName} onChange={e=>setAName(e.target.value)} placeholder="Nombre completo"
+              className="w-full bg-white border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-orange-600"/>
+            <input type="email" value={aEmail} onChange={e=>setAEmail(e.target.value)} placeholder="Correo electrónico"
+              className="w-full bg-white border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-orange-600"/>
+            <input value={aPhone} onChange={e=>setAPhone(e.target.value)} placeholder="Teléfono (opcional)"
+              className="w-full bg-white border border-stone-300 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:border-orange-600"/>
+            {aErr && <p className="text-xs text-red-700">{aErr}</p>}
+            {aLast && (
+              <div className="bg-stone-900 text-stone-50 rounded-lg px-3 py-2 text-xs">
+                Código <span className="font-mono text-orange-400">{aLast.code}</span> · {aLast.emailSent ? 'correo enviado' : 'comparte por WhatsApp'}
+              </div>
+            )}
+            <button disabled={aBusy} onClick={inviteAdmin}
+              className="w-full bg-orange-600 hover:bg-orange-700 disabled:opacity-60 text-orange-50 rounded-lg py-2.5 text-sm font-medium flex items-center justify-center gap-1">
+              <UserPlus className="w-4 h-4"/> {aBusy ? 'Enviando…' : 'Invitar administrador'}
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ============================================================
 // ADMIN VIEW
 // ============================================================
 function AdminView({ houses, setHouses, auths, logs, addLog,
@@ -2056,12 +2270,11 @@ function AdminView({ houses, setHouses, auths, logs, addLog,
 
       <div className="flex gap-1 overflow-x-auto -mx-1 px-1">
         {[
-          { id: 'houses',      label: 'Casas',        icon: Home },
-          { id: 'users',       label: 'Usuarios',     icon: Users },
-          { id: 'invitations', label: 'Invitaciones', icon: Mail },
-          { id: 'risks',       label: 'Seguridad',    icon: ShieldAlert },
-          { id: 'logs',        label: 'Auditoría',    icon: Activity },
-          { id: 'config',      label: 'Config.',      icon: Settings },
+          { id: 'houses', label: 'Casas',          icon: Home },
+          { id: 'admins', label: 'Usuarios Admin.', icon: Shield },
+          { id: 'risks',  label: 'Seguridad',       icon: ShieldAlert },
+          { id: 'logs',   label: 'Auditoría',       icon: Activity },
+          { id: 'config', label: 'Config.',         icon: Settings },
         ].map(t => {
           const Icon = t.icon;
           const active = tab === t.id;
@@ -2076,15 +2289,11 @@ function AdminView({ houses, setHouses, auths, logs, addLog,
         })}
       </div>
 
-      {tab === 'houses'      && <HousesPanel houses={aHouses} setHouses={setAHouses} users={aUsers} setUsers={setAUsers} invitations={aInvites} setInvitations={setAInvites} addLog={addLog} currentConjunto={currentConjunto}/>}
-      {tab === 'users'       && <UsersPanel users={aUsers} setUsers={setAUsers} houses={aHouses} currentUser={currentUser} addLog={addLog}/>}
-      {tab === 'invitations' && <InvitationsPanel invitations={aInvites} setInvitations={setAInvites}
-                                                  houses={aHouses} users={aUsers} currentConjunto={currentConjunto}
-                                                  currentUser={currentUser} addLog={addLog}/>}
-      {tab === 'risks'       && <RisksPanel auths={auths} houses={aHouses}/>}
-      {tab === 'logs'        && <LogsPanel logs={logs}/>}
-      {tab === 'config'      && <ConfigPanel currentConjunto={currentConjunto} setConjuntos={setConjuntos}
-                                             addLog={addLog} currentUser={currentUser}/>}
+      {tab === 'houses' && <HousesPanel houses={aHouses} setHouses={setAHouses} users={aUsers} setUsers={setAUsers} invitations={aInvites} setInvitations={setAInvites} addLog={addLog} currentConjunto={currentConjunto}/>}
+      {tab === 'admins' && <AdminUsersPanel users={aUsers} invitations={aInvites} setInvitations={setAInvites} addLog={addLog} currentConjunto={currentConjunto}/>}
+      {tab === 'risks'  && <RisksPanel auths={auths} houses={aHouses}/>}
+      {tab === 'logs'   && <LogsPanel logs={logs}/>}
+      {tab === 'config' && <ConfigPanel currentConjunto={currentConjunto} setConjuntos={setConjuntos} addLog={addLog} currentUser={currentUser}/>} 
     </div>
   );
 }

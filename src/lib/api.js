@@ -574,3 +574,61 @@ async function dataUrlToBlob(dataUrl) {
   const res = await fetch(dataUrl);
   return await res.blob();
 }
+// ============================================================
+// GARITA: configuración + guardias (lista sin login)
+// ============================================================
+
+export async function fetchGateConfig() {
+  if (!USE_SUPABASE) return { gateService: 'propio', securityCompany: '' };
+  const c = await fetchMyConjunto();
+  return { gateService: c?.gate_service || 'propio', securityCompany: c?.security_company || '' };
+}
+
+export async function updateGateConfig({ gateService, securityCompany }) {
+  if (!USE_SUPABASE) return;
+  const c = await fetchMyConjunto();
+  if (!c) fail('updateGateConfig', new Error('Conjunto no encontrado'));
+  const patch = {};
+  if (gateService !== undefined) patch.gate_service = gateService;
+  if (securityCompany !== undefined) patch.security_company = securityCompany || null;
+  const { error } = await supabase.from('conjuntos').update(patch).eq('id', c.id);
+  if (error) fail('updateGateConfig', error);
+}
+
+export async function fetchGuards() {
+  if (!USE_SUPABASE) return [];
+  const { data, error } = await supabase
+    .from('guards')
+    .select('*')
+    .order('created_at', { ascending: true });
+  if (error) fail('fetchGuards', error);
+  return (data || []).map(g => ({ id: g.id, name: g.name, doc: g.doc || '', active: g.active }));
+}
+
+export async function createGuard({ name, doc }) {
+  if (!USE_SUPABASE) return null;
+  const c = await fetchMyConjunto();
+  const { data, error } = await supabase
+    .from('guards')
+    .insert({ conjunto_id: c.id, name, doc: doc || null, active: true })
+    .select()
+    .single();
+  if (error) fail('createGuard', error);
+  return { id: data.id, name: data.name, doc: data.doc || '', active: data.active };
+}
+
+export async function updateGuard(id, patch) {
+  if (!USE_SUPABASE) return;
+  const p = {};
+  if (patch.name   !== undefined) p.name = patch.name;
+  if (patch.doc    !== undefined) p.doc = patch.doc || null;
+  if (patch.active !== undefined) p.active = patch.active;
+  const { error } = await supabase.from('guards').update(p).eq('id', id);
+  if (error) fail('updateGuard', error);
+}
+
+export async function deleteGuard(id) {
+  if (!USE_SUPABASE) return;
+  const { error } = await supabase.from('guards').delete().eq('id', id);
+  if (error) fail('deleteGuard', error);
+}
