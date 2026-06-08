@@ -1992,13 +1992,21 @@ function CheckRow({ checked, onClick, icon: Icon, label }) {
 function AdminUsersPanel({ users, invitations, setInvitations, addLog, currentConjunto }) {
   const [sub, setSub] = useState('garita');
 
-  // ---- Garita ----
+  // ---- Garita: config + guardias ----
   const [gateService, setGateService] = useState('propio');
   const [company, setCompany] = useState('');
   const [guards, setGuards]   = useState([]);
   const [gName, setGName]     = useState('');
   const [gDoc, setGDoc]       = useState('');
   const [gErr, setGErr]       = useState('');
+
+  // ---- Garita: acceso de la tablet ----
+  const [gateAccess, setGateAccess] = useState(null);
+  const [gaEmail, setGaEmail]   = useState('');
+  const [gaPass, setGaPass]     = useState('');
+  const [gaNewPass, setGaNewPass] = useState('');
+  const [gaErr, setGaErr]       = useState('');
+  const [gaBusy, setGaBusy]     = useState(false);
 
   useEffect(() => {
     if (!USE_SUPABASE) return;
@@ -2010,6 +2018,7 @@ function AdminUsersPanel({ users, invitations, setInvitations, addLog, currentCo
         setGateService(cfg.gateService);
         setCompany(cfg.securityCompany || '');
         setGuards(await api.fetchGuards());
+        setGateAccess(await api.fetchGateAccess());
       } catch (e) { console.error('[gate load]', e); }
     })();
   }, []);
@@ -2043,6 +2052,40 @@ function AdminUsersPanel({ users, invitations, setInvitations, addLog, currentCo
       setGuards(prev => prev.filter(x => x.id !== g.id));
       addLog('guard_removed', 'Admin', `Guardia eliminado · ${g.name}`);
     } catch (e) { alert('Error: ' + e.message); }
+  };
+
+  // ---- Acceso de la tablet ----
+  const createGate = async () => {
+    setGaErr('');
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(gaEmail.trim())) return setGaErr('Correo inválido.');
+    if (gaPass.length < 6) return setGaErr('Contraseña mín. 6 caracteres.');
+    setGaBusy(true);
+    try {
+      await api.createGateAccess({ email: gaEmail.trim().toLowerCase(), password: gaPass });
+      setGateAccess(await api.fetchGateAccess());
+      setGaEmail(''); setGaPass('');
+      addLog('gate_access_created', 'Admin', 'Acceso de garita creado');
+    } catch (e) { setGaErr(e.message); } finally { setGaBusy(false); }
+  };
+  const resetGate = async () => {
+    setGaErr('');
+    if (gaNewPass.length < 6) return setGaErr('Contraseña mín. 6 caracteres.');
+    setGaBusy(true);
+    try {
+      await api.resetGatePassword(gaNewPass);
+      setGateAccess(await api.fetchGateAccess());
+      setGaNewPass('');
+      alert('Contraseña de garita actualizada.');
+    } catch (e) { setGaErr(e.message); } finally { setGaBusy(false); }
+  };
+  const revokeGateAccess = async () => {
+    if (!window.confirm('¿Revocar el acceso de garita? La tablet quedará bloqueada y tendrás que crear una nueva contraseña para volver a usarla.')) return;
+    setGaBusy(true);
+    try {
+      await api.revokeGate();
+      setGateAccess(await api.fetchGateAccess());
+      addLog('gate_access_revoked', 'Admin', 'Acceso de garita revocado');
+    } catch (e) { alert('Error: ' + e.message); } finally { setGaBusy(false); }
   };
 
   // ---- Administrador ----
@@ -2099,6 +2142,54 @@ function AdminUsersPanel({ users, invitations, setInvitations, addLog, currentCo
 
       {sub === 'garita' ? (
         <div className="space-y-4">
+          {/* Acceso de la tablet */}
+          <div className="bg-white rounded-xl border border-stone-200 p-4 space-y-3">
+            <p className="font-mono text-[10px] uppercase tracking-wider text-stone-600">Acceso de la tablet (garita)</p>
+            {!gateAccess ? (
+              <>
+                <p className="text-[12px] text-stone-500">Crea el acceso con el que la tablet de la garita iniciará sesión. Tú controlas estas credenciales y puedes revocarlas si se pierde el equipo.</p>
+                <input value={gaEmail} onChange={e=>setGaEmail(e.target.value)} placeholder="Correo de la garita"
+                  className="w-full bg-white border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-orange-600"/>
+                <input value={gaPass} onChange={e=>setGaPass(e.target.value)} type="text" placeholder="Contraseña (mín. 6)"
+                  className="w-full bg-white border border-stone-300 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:border-orange-600"/>
+                {gaErr && <p className="text-xs text-red-700">{gaErr}</p>}
+                <button disabled={gaBusy} onClick={createGate}
+                  className="w-full bg-stone-900 hover:bg-stone-800 disabled:opacity-60 text-stone-50 rounded-lg py-2.5 text-sm font-medium">
+                  {gaBusy ? 'Creando…' : 'Crear acceso de garita'}
+                </button>
+              </>
+            ) : (
+              <>
+                <div className="flex items-center gap-2">
+                  <Smartphone className="w-4 h-4 text-stone-500 shrink-0"/>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{gateAccess.email}</p>
+                    <p className="text-[10px] font-mono">{gateAccess.active
+                      ? <span className="text-green-700">activo</span>
+                      : <span className="text-red-700">revocado · la tablet está bloqueada</span>}</p>
+                  </div>
+                </div>
+                <div className="border-t border-stone-100 pt-3 space-y-2">
+                  <input value={gaNewPass} onChange={e=>setGaNewPass(e.target.value)} type="text" placeholder="Nueva contraseña (mín. 6)"
+                    className="w-full bg-white border border-stone-300 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:border-orange-600"/>
+                  {gaErr && <p className="text-xs text-red-700">{gaErr}</p>}
+                  <div className="flex gap-2">
+                    <button disabled={gaBusy} onClick={resetGate}
+                      className="flex-1 bg-orange-600 hover:bg-orange-700 disabled:opacity-60 text-orange-50 rounded-lg py-2 text-sm font-medium">
+                      {gateAccess.active ? 'Cambiar contraseña' : 'Reactivar con nueva contraseña'}
+                    </button>
+                    {gateAccess.active && (
+                      <button disabled={gaBusy} onClick={revokeGateAccess}
+                        className="px-3 border border-red-300 text-red-700 hover:bg-red-50 rounded-lg py-2 text-sm font-medium">
+                        Revocar
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+
           <div className="bg-white rounded-xl border border-stone-200 p-4 space-y-3">
             <p className="font-mono text-[10px] uppercase tracking-wider text-stone-600">Servicio de vigilancia</p>
             <div className="grid grid-cols-2 gap-2">
@@ -2143,7 +2234,7 @@ function AdminUsersPanel({ users, invitations, setInvitations, addLog, currentCo
             <button onClick={addGuard} className="w-full mt-2 border border-dashed border-stone-300 rounded-lg py-2 text-sm text-stone-600 hover:border-stone-400 flex items-center justify-center gap-1">
               <Plus className="w-4 h-4"/> Agregar guardia
             </button>
-            <p className="text-[11px] text-stone-400 mt-2">Los guardias no tienen cuenta ni login. La garita usará un dispositivo compartido (tablet) y elegirá quién está activo.</p>
+            <p className="text-[11px] text-stone-400 mt-2">Los guardias no tienen cuenta ni login. La garita usa la tablet compartida y elige quién está activo.</p>
           </div>
         </div>
       ) : (
