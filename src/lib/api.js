@@ -35,7 +35,14 @@ export async function signIn(email, password) {
     email: email.trim().toLowerCase(),
     password,
   });
-  if (error) fail('signIn', error);
+  if (error) {
+    const m = /invalid login credentials/i.test(error.message)
+      ? 'Correo o contraseña incorrectos.'
+      : /email not confirmed/i.test(error.message)
+      ? 'Tu correo aún no está confirmado.'
+      : error.message;
+    fail('signIn', new Error(m));
+  }
 
   const profile = await fetchMyProfile();
   if (!profile) fail('signIn', new Error('Sesión válida pero sin perfil. Contacta a tu administrador.'));

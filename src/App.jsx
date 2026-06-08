@@ -624,10 +624,10 @@ function LoginScreen({ users, onLogin, onActivate, onForgotPassword }) {
   const [error, setError] = useState('');
   const [showDemo, setShowDemo] = useState(true);
 
-  const submit = () => {
+  const submit = async () => {
     setError('');
     if (!email.trim() || !password) { setError('Ingresa email y contraseña.'); return; }
-    const r = onLogin(email.trim(), password);
+    const r = await onLogin(email.trim(), password);
     if (!r.ok) setError(r.error);
   };
 
