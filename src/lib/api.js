@@ -682,3 +682,24 @@ export async function revokeGate() {
   if (!data?.ok) fail('revokeGate', new Error(data?.error || 'No se pudo revocar.'));
   return data;
 }
+
+// ============================================================
+// GARITA: amarre por dispositivo
+// ============================================================
+
+export async function verifyGateDevice(fingerprint) {
+  const { data, error } = await supabase.functions.invoke('gate-access', {
+    body: { action: 'verify-device', fingerprint },
+  });
+  if (error) fail('verifyGateDevice', error);
+  return data; // { ok: true } | { ok: true, claimed: true } | { ok: false, error }
+}
+
+export async function resetGateDevice() {
+  const { data, error } = await supabase.functions.invoke('gate-access', {
+    body: { action: 'reset-device' },
+  });
+  if (error) fail('resetGateDevice', error);
+  if (!data?.ok) fail('resetGateDevice', new Error(data?.error || 'No se pudo restablecer el dispositivo.'));
+  return data;
+}

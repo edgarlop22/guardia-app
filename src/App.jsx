@@ -349,11 +349,27 @@ export default function App() {
     setAuthError(null);
     if (USE_SUPABASE) {
       try {
-        const { user, profile } = await api.signIn(email, password);
+       
+      const { user, profile } = await api.signIn(email, password);
         const mappedUser = mapProfileToUser(profile, user);
+        // Amarre por dispositivo: la garita solo funciona desde la tablet registrada
+        if (mappedUser.role === 'guard') {
+          let fp = await storage.getJSON('gateFingerprint').catch(() => null);
+          if (!fp) {
+            fp = (typeof crypto !== 'undefined' && crypto.randomUUID)
+              ? crypto.randomUUID()
+              : (Date.now() + '-' + Math.random().toString(36).slice(2));
+            await storage.setJSON('gateFingerprint', fp).catch(() => {});
+          }
+          const dev = await api.verifyGateDevice(fp);
+          if (!dev?.ok) {
+            await api.signOut().catch(() => {});
+            return { ok: false, error: dev?.error || 'Dispositivo no autorizado para la garita.' };
+          }
+        }
         setCurrentUser(mappedUser);
         await storage.setJSON('session', { userId: mappedUser.id, ts: Date.now() }).catch(() => {});
-        return { ok: true };
+        return { ok: true };  
       } catch (e) {
         return { ok: false, error: e.message };
       }
@@ -2087,6 +2103,14 @@ function AdminUsersPanel({ users, invitations, setInvitations, addLog, currentCo
       addLog('gate_access_revoked', 'Admin', 'Acceso de garita revocado');
     } catch (e) { alert('Error: ' + e.message); } finally { setGaBusy(false); }
   };
+  const resetDevice = async () => {
+    if (!window.confirm('¿Restablecer el dispositivo de garita? La próxima tablet que inicie sesión quedará registrada como la autorizada.')) return;
+    setGaBusy(true);
+    try {
+      await api.resetGateDevice();
+      alert('Dispositivo restablecido. La próxima tablet que inicie sesión quedará autorizada.');
+    } catch (e) { alert('Error: ' + e.message); } finally { setGaBusy(false); }
+  };
 
   // ---- Administrador ----
   const admins = (users || []).filter(u => u.role === 'admin' && u.active !== false);
@@ -2185,6 +2209,12 @@ function AdminUsersPanel({ users, invitations, setInvitations, addLog, currentCo
                       </button>
                     )}
                   </div>
+                  {gateAccess.active && (
+                    <button disabled={gaBusy} onClick={resetDevice}
+                      className="w-full border border-stone-300 text-stone-600 hover:border-stone-400 rounded-lg py-2 text-sm font-medium">
+                      Restablecer dispositivo (cambiar de tablet)
+                    </button>
+                  )}
                 </div>
               </>
             )}
