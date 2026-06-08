@@ -279,34 +279,47 @@ export default function App() {
   }
 }, []);
 
-  // Guardia de sesión para la garita: revalida al entrar, cada 30 s, y al volver al frente.
+  // Guardia de sesión para la garita: valida sesión + punto al entrar, cada 30 s y al volver al frente.
   useEffect(() => {
     if (!USE_SUPABASE) return;
     if (!currentUser || currentUser.role !== 'guard') return;
     let alive = true;
 
+    const kick = async (msg) => {
+      setCurrentUser(null);
+      setScreen('login');
+      await api.signOut().catch(() => {});
+      await storage.remove('session').catch(() => {});
+      alert(msg);
+    };
+
     const check = async () => {
       try {
+        // 1) ¿La sesión sigue válida en el servidor?
+        const { data: { user }, error: uerr } = await supabase.auth.getUser();
+        if (!alive) return;
+        if (uerr && (uerr.status === 401 || uerr.status === 403)) return kick('Tu sesión expiró. Inicia sesión de nuevo.');
+        if (uerr) return;                 // error de red: no saca a nadie
+        if (!user) return kick('Tu sesión expiró. Inicia sesión de nuevo.');
+
+        // 2) ¿El punto sigue siendo válido?
         const fp = await storage.getJSON('gateFingerprint').catch(() => null);
         if (!fp) return;
-        const v = await api.gateVerify(fp);
+        const v = await api.gateVerify(fp).catch(() => null);
         if (!alive) return;
-        if (v?.ok && v.point) {
+        if (v && v.ok && v.point) {
           await storage.setJSON('gatePoint', v.point).catch(() => {});
-        } else {
-          setCurrentUser(null);
-          setScreen('login');
-          await api.signOut().catch(() => {});
-          await storage.remove('session').catch(() => {});
-          alert(v?.error || 'La sesión de garita terminó en este dispositivo.');
+        } else if (v) {
+          return kick(v.error || 'La sesión de garita terminó en este dispositivo.');
         }
+        // v === null → fue error de red en gateVerify: no saca, reintenta luego
       } catch { /* red: reintenta en el próximo ciclo */ }
     };
 
     const onVisible = () => { if (document.visibilityState === 'visible') check(); };
 
-    check();                                   // al entrar o restaurar
-    const id = setInterval(check, 30000);      // cada 30 s en primer plano
+    check();
+    const id = setInterval(check, 30000);
     document.addEventListener('visibilitychange', onVisible);
     window.addEventListener('focus', onVisible);
 
