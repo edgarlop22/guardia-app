@@ -350,9 +350,9 @@ export default function App() {
     if (USE_SUPABASE) {
       try {
        
-      const { user, profile } = await api.signIn(email, password);
+     const { user, profile } = await api.signIn(email, password);
         const mappedUser = mapProfileToUser(profile, user);
-        // Amarre por dispositivo: la garita solo funciona desde la tablet registrada
+        // Garita: validar o elegir el punto de acceso de esta tablet
         if (mappedUser.role === 'guard') {
           let fp = await storage.getJSON('gateFingerprint').catch(() => null);
           if (!fp) {
@@ -361,15 +361,21 @@ export default function App() {
               : (Date.now() + '-' + Math.random().toString(36).slice(2));
             await storage.setJSON('gateFingerprint', fp).catch(() => {});
           }
-          const dev = await api.verifyGateDevice(fp);
-          if (!dev?.ok) {
+          const v = await api.gateVerify(fp);
+          if (v?.ok && v.point) {
+            await storage.setJSON('gatePoint', v.point).catch(() => {});
+          } else if (v?.needsClaim) {
+            // Aún no entra: LoginScreen mostrará el selector de punto.
+            // No cerramos sesión: se necesita para reclamar el punto.
+            return { ok: false, claim: { fp, freePoints: v.freePoints } };
+          } else {
             await api.signOut().catch(() => {});
-            return { ok: false, error: dev?.error || 'Dispositivo no autorizado para la garita.' };
+            return { ok: false, error: v?.error || 'Dispositivo no autorizado para la garita.' };
           }
         }
         setCurrentUser(mappedUser);
         await storage.setJSON('session', { userId: mappedUser.id, ts: Date.now() }).catch(() => {});
-        return { ok: true };  
+        return { ok: true };
       } catch (e) {
         return { ok: false, error: e.message };
       }
@@ -639,12 +645,31 @@ function LoginScreen({ users, onLogin, onActivate, onForgotPassword }) {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [showDemo, setShowDemo] = useState(true);
+  const [claim, setClaim] = useState(null);     // { fp, freePoints } cuando la tablet debe elegir punto
+  const [claiming, setClaiming] = useState(false);
 
   const submit = async () => {
     setError('');
     if (!email.trim() || !password) { setError('Ingresa email y contraseña.'); return; }
     const r = await onLogin(email.trim(), password);
+    if (r.claim) { setClaim(r.claim); return; }
     if (!r.ok) setError(r.error);
+  };
+
+  const pickPoint = async (point) => {
+    setError(''); setClaiming(true);
+    try {
+      const res = await api.gateClaim(claim.fp, point.id);
+      if (!res?.ok) { setError(res?.error || 'No se pudo registrar el punto.'); setClaiming(false); return; }
+      setClaim(null);
+      const r = await onLogin(email.trim(), password); // re-login: ahora la huella ya tiene punto → entra
+      if (!r.ok) setError(r.error);
+    } catch (e) { setError(e.message); } finally { setClaiming(false); }
+  };
+
+  const cancelClaim = async () => {
+    await api.signOut().catch(() => {});
+    setClaim(null); setError('');
   };
 
   const quickLogin = (u) => onLogin(u.email, 'demo');
@@ -656,6 +681,52 @@ function LoginScreen({ users, onLogin, onActivate, onForgotPassword }) {
     { u: users.find(x => x.id === 'u_juan'),    label: 'Residente · Almendros',       icon: Home,     color: 'stone'  },
   ].filter(x => x.u);
 
+  if (claim) {
+    const LABELS = { entrada: 'Entrada', salida: 'Salida', ambas: 'Ambas' };
+    return (
+      <div className="min-h-screen bg-black text-stone-50 grain-orange flex items-center justify-center px-6" style={{ fontFamily: "'Geist', ui-sans-serif, system-ui, sans-serif" }}>
+        <style>{`
+          @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700;9..144,800&family=JetBrains+Mono:wght@400;500;700&family=Geist:wght@300;400;500;600;700&display=swap');
+          .font-display { font-family: 'Fraunces', Georgia, serif; letter-spacing: -0.02em; }
+          .font-mono    { font-family: 'JetBrains Mono', ui-monospace, monospace; }
+          .grain-orange { background-image: radial-gradient(circle at 1px 1px, rgba(234,88,12,0.10) 1px, transparent 0); background-size: 18px 18px; }
+        `}</style>
+        <div className="max-w-md w-full">
+          <div className="flex items-center gap-3 mb-8">
+            <GuardLogo size={48} />
+            <div>
+              <h1 className="font-display text-2xl leading-tight font-bold">{BRAND.name}</h1>
+              <p className="font-mono text-[10px] text-orange-400 uppercase tracking-widest mt-0.5">Configurar este dispositivo</p>
+            </div>
+          </div>
+          <h2 className="font-display text-3xl mb-1">¿Cuál punto es esta tablet?</h2>
+          <p className="text-stone-400 text-sm mb-6">Elige el punto de acceso que cubre este dispositivo. Quedará fijo para esta tablet.</p>
+          {error && (
+            <div className="bg-red-950 border border-red-800 text-red-200 rounded-lg px-3 py-2.5 text-sm flex gap-2 mb-4">
+              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5"/>{error}
+            </div>
+          )}
+          <div className="space-y-2.5">
+            {claim.freePoints.map(p => (
+              <button key={p.id} disabled={claiming} onClick={() => pickPoint(p)}
+                className="w-full text-left p-4 rounded-xl border border-stone-800 bg-stone-900 hover:border-orange-500 transition flex items-center gap-3 disabled:opacity-50">
+                <MapPin className="w-5 h-5 text-orange-400 shrink-0"/>
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium truncate">{p.name || LABELS[p.label]}</p>
+                  <p className="font-mono text-[10px] uppercase tracking-wider text-stone-500">{LABELS[p.label]}</p>
+                </div>
+                <ChevronRight className="w-5 h-5 text-stone-600"/>
+              </button>
+            ))}
+          </div>
+          <button disabled={claiming} onClick={cancelClaim}
+            className="w-full mt-4 text-stone-500 hover:text-stone-300 text-sm py-2">
+            Cancelar
+          </button>
+        </div>
+      </div>
+    );
+  }
   return (
     <div className="min-h-screen bg-black text-stone-50 grain-orange" style={{ fontFamily: "'Geist', ui-sans-serif, system-ui, sans-serif" }}>
       <style>{`
@@ -2283,19 +2354,13 @@ function AdminUsersPanel({ users, invitations, setInvitations, addLog, currentCo
                       </button>
                     )}
                   </div>
-                  {gateAccess.active && (
-                    <button disabled={gaBusy} onClick={resetDevice}
-                      className="w-full border border-stone-300 text-stone-600 hover:border-stone-400 rounded-lg py-2 text-sm font-medium">
-                      Restablecer dispositivo (cambiar de tablet)
-                    </button>
-                  )}
-                </div>
+                 </div>
               </>
             )}
           </div>
 
           <GatePointsCard />  
-          
+
           <div className="bg-white rounded-xl border border-stone-200 p-4 space-y-3">
             <p className="font-mono text-[10px] uppercase tracking-wider text-stone-600">Servicio de vigilancia</p>
             <div className="grid grid-cols-2 gap-2">
