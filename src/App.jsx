@@ -278,6 +278,40 @@ export default function App() {
     setScreen('reset-password');
   }
 }, []);
+
+// Guardia de sesión para la garita: revalida el punto al entrar y cada 30 s.
+  // Cierra los huecos de recarga / recuperación de contraseña y corta la
+  // sesión cuando el admin revoca o libera el punto.
+  useEffect(() => {
+    if (!USE_SUPABASE) return;
+    if (!currentUser || currentUser.role !== 'guard') return;
+    let alive = true;
+
+    const check = async () => {
+      try {
+        const fp = await storage.getJSON('gateFingerprint').catch(() => null);
+        if (!fp) return; // sin huella todavía; el login la genera
+        const v = await api.gateVerify(fp);
+        if (!alive) return;
+        if (v?.ok && v.point) {
+          await storage.setJSON('gatePoint', v.point).catch(() => {});
+        } else {
+          // Ya no es válida en este dispositivo → fuera
+          setCurrentUser(null);
+          setScreen('login');
+          await api.signOut().catch(() => {});
+          await storage.remove('session').catch(() => {});
+          alert(v?.error || 'La sesión de garita terminó en este dispositivo.');
+        }
+      } catch {
+        // Error de red: no saca a nadie; reintenta en el próximo ciclo.
+      }
+    };
+
+    check();                                   // inmediato al entrar o restaurar
+    const id = setInterval(check, 30000);      // y cada 30 s
+    return () => { alive = false; clearInterval(id); };
+  }, [currentUser]);
   
   // Backend hook — loads real data after login when USE_SUPABASE is true
   const backend = useBackend(currentUser);
@@ -2113,7 +2147,10 @@ function GatePointsCard() {
 
   return (
     <div className="bg-white rounded-xl border border-stone-200 p-4">
-      <p className="font-mono text-[10px] uppercase tracking-wider text-stone-600 mb-3">Puntos de acceso</p>
+      <div className="flex items-center justify-between mb-3">
+        <p className="font-mono text-[10px] uppercase tracking-wider text-stone-600">Puntos de acceso</p>
+        <button onClick={load} className="text-[10px] font-mono text-stone-400 hover:text-orange-700">actualizar</button>
+      </div>
       <div className="space-y-2">
         {points.length === 0 && <p className="text-sm text-stone-400">Sin puntos definidos. Agrega Entrada y Salida — o solo uno "Ambas" si es un edificio de un punto.</p>}
         {points.map(p => (
