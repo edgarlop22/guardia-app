@@ -279,9 +279,7 @@ export default function App() {
   }
 }, []);
 
-// Guardia de sesión para la garita: revalida el punto al entrar y cada 30 s.
-  // Cierra los huecos de recarga / recuperación de contraseña y corta la
-  // sesión cuando el admin revoca o libera el punto.
+  // Guardia de sesión para la garita: revalida al entrar, cada 30 s, y al volver al frente.
   useEffect(() => {
     if (!USE_SUPABASE) return;
     if (!currentUser || currentUser.role !== 'guard') return;
@@ -290,27 +288,34 @@ export default function App() {
     const check = async () => {
       try {
         const fp = await storage.getJSON('gateFingerprint').catch(() => null);
-        if (!fp) return; // sin huella todavía; el login la genera
+        if (!fp) return;
         const v = await api.gateVerify(fp);
         if (!alive) return;
         if (v?.ok && v.point) {
           await storage.setJSON('gatePoint', v.point).catch(() => {});
         } else {
-          // Ya no es válida en este dispositivo → fuera
           setCurrentUser(null);
           setScreen('login');
           await api.signOut().catch(() => {});
           await storage.remove('session').catch(() => {});
           alert(v?.error || 'La sesión de garita terminó en este dispositivo.');
         }
-      } catch {
-        // Error de red: no saca a nadie; reintenta en el próximo ciclo.
-      }
+      } catch { /* red: reintenta en el próximo ciclo */ }
     };
 
-    check();                                   // inmediato al entrar o restaurar
-    const id = setInterval(check, 30000);      // y cada 30 s
-    return () => { alive = false; clearInterval(id); };
+    const onVisible = () => { if (document.visibilityState === 'visible') check(); };
+
+    check();                                   // al entrar o restaurar
+    const id = setInterval(check, 30000);      // cada 30 s en primer plano
+    document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('focus', onVisible);
+
+    return () => {
+      alive = false;
+      clearInterval(id);
+      document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('focus', onVisible);
+    };
   }, [currentUser]);
   
   // Backend hook — loads real data after login when USE_SUPABASE is true
@@ -695,10 +700,10 @@ function LoginScreen({ users, onLogin, onActivate, onForgotPassword }) {
     try {
       const res = await api.gateClaim(claim.fp, point.id);
       if (!res?.ok) { setError(res?.error || 'No se pudo registrar el punto.'); setClaiming(false); return; }
-      setClaim(null);
-      const r = await onLogin(email.trim(), password); // re-login: ahora la huella ya tiene punto → entra
-      if (!r.ok) setError(r.error);
-    } catch (e) { setError(e.message); } finally { setClaiming(false); }
+      const r = await onLogin(email.trim(), password); // setCurrentUser ocurre aquí y reemplaza esta pantalla
+      if (!r.ok) { setError(r.error); setClaiming(false); return; }
+      // no limpiamos 'claim': al entrar, la app deja de mostrar el login (sin parpadeo)
+    } catch (e) { setError(e.message); setClaiming(false); }
   };
 
   const cancelClaim = async () => {
