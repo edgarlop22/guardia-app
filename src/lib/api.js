@@ -632,3 +632,46 @@ export async function deleteGuard(id) {
   const { error } = await supabase.from('guards').delete().eq('id', id);
   if (error) fail('deleteGuard', error);
 }
+
+// ============================================================
+// GARITA: acceso de la tablet (modelo A)
+// ============================================================
+
+export async function fetchGateAccess() {
+  if (!USE_SUPABASE) return null;
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('id, email, active')
+    .eq('role', 'guard')
+    .limit(1);
+  if (error) { log('fetchGateAccess error', error); return null; }
+  const row = (data || [])[0];
+  return row ? { id: row.id, email: row.email, active: row.active } : null;
+}
+
+export async function createGateAccess({ email, password }) {
+  const { data, error } = await supabase.functions.invoke('gate-access', {
+    body: { action: 'create', email, password },
+  });
+  if (error) fail('createGateAccess', error);
+  if (!data?.ok) fail('createGateAccess', new Error(data?.error || 'No se pudo crear.'));
+  return data;
+}
+
+export async function resetGatePassword(password) {
+  const { data, error } = await supabase.functions.invoke('gate-access', {
+    body: { action: 'reset', password },
+  });
+  if (error) fail('resetGatePassword', error);
+  if (!data?.ok) fail('resetGatePassword', new Error(data?.error || 'No se pudo restablecer.'));
+  return data;
+}
+
+export async function revokeGate() {
+  const { data, error } = await supabase.functions.invoke('gate-access', {
+    body: { action: 'revoke' },
+  });
+  if (error) fail('revokeGate', error);
+  if (!data?.ok) fail('revokeGate', new Error(data?.error || 'No se pudo revocar.'));
+  return data;
+}
