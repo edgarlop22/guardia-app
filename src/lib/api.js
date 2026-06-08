@@ -703,3 +703,54 @@ export async function resetGateDevice() {
   if (!data?.ok) fail('resetGateDevice', new Error(data?.error || 'No se pudo restablecer el dispositivo.'));
   return data;
 }
+
+// ============================================================
+// GARITA: puntos de acceso (multi-dispositivo)
+// ============================================================
+
+export async function fetchGatePoints() {
+  if (!USE_SUPABASE) return [];
+  const { data, error } = await supabase
+    .from('gate_points')
+    .select('id, label, name, fingerprint, active')
+    .order('created_at', { ascending: true });
+  if (error) fail('fetchGatePoints', error);
+  return (data || []).map(p => ({
+    id: p.id, label: p.label, name: p.name || '',
+    claimed: !!p.fingerprint, active: p.active,
+  }));
+}
+
+export async function createGatePoint({ label, name }) {
+  const { data, error } = await supabase.functions.invoke('gate-access', { body: { action: 'create-point', label, name } });
+  if (error) fail('createGatePoint', error);
+  if (!data?.ok) fail('createGatePoint', new Error(data?.error || 'No se pudo crear el punto.'));
+  return data;
+}
+
+export async function deleteGatePoint(pointId) {
+  const { data, error } = await supabase.functions.invoke('gate-access', { body: { action: 'delete-point', pointId } });
+  if (error) fail('deleteGatePoint', error);
+  if (!data?.ok) fail('deleteGatePoint', new Error(data?.error || 'No se pudo eliminar.'));
+  return data;
+}
+
+export async function resetGatePoint(pointId) {
+  const { data, error } = await supabase.functions.invoke('gate-access', { body: { action: 'reset-point', pointId } });
+  if (error) fail('resetGatePoint', error);
+  if (!data?.ok) fail('resetGatePoint', new Error(data?.error || 'No se pudo liberar.'));
+  return data;
+}
+
+// (se usan en el paso 1b — la tablet)
+export async function gateVerify(fingerprint) {
+  const { data, error } = await supabase.functions.invoke('gate-access', { body: { action: 'gate-verify', fingerprint } });
+  if (error) fail('gateVerify', error);
+  return data;
+}
+
+export async function gateClaim(fingerprint, pointId) {
+  const { data, error } = await supabase.functions.invoke('gate-access', { body: { action: 'gate-claim', fingerprint, pointId } });
+  if (error) fail('gateClaim', error);
+  return data;
+}

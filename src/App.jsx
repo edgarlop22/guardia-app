@@ -2005,6 +2005,80 @@ function CheckRow({ checked, onClick, icon: Icon, label }) {
 // ============================================================
 // USUARIOS ADMINISTRATIVOS (Garita + Administrador)
 // ============================================================
+function GatePointsCard() {
+  const [points, setPoints] = useState([]);
+  const [label, setLabel]   = useState('entrada');
+  const [pName, setPName]   = useState('');
+  const [err, setErr]       = useState('');
+  const [busy, setBusy]     = useState(false);
+
+  const LABELS = { entrada: 'Entrada', salida: 'Salida', ambas: 'Ambas' };
+
+  const load = async () => {
+    try { setPoints(await api.fetchGatePoints()); } catch (e) { console.error('[points load]', e); }
+  };
+  useEffect(() => {
+    if (!USE_SUPABASE) return;
+    (async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      load();
+    })();
+  }, []);
+
+  const add = async () => {
+    setErr(''); setBusy(true);
+    try { await api.createGatePoint({ label, name: pName.trim() }); setPName(''); await load(); }
+    catch (e) { setErr(e.message); } finally { setBusy(false); }
+  };
+  const del = async (p) => {
+    if (!window.confirm(`¿Eliminar el punto "${p.name || LABELS[p.label]}"?`)) return;
+    try { await api.deleteGatePoint(p.id); await load(); } catch (e) { alert('Error: ' + e.message); }
+  };
+  const reset = async (p) => {
+    if (!window.confirm(`¿Liberar el dispositivo de "${p.name || LABELS[p.label]}"? La próxima tablet que entre y elija este punto quedará registrada.`)) return;
+    try { await api.resetGatePoint(p.id); await load(); } catch (e) { alert('Error: ' + e.message); }
+  };
+
+  return (
+    <div className="bg-white rounded-xl border border-stone-200 p-4">
+      <p className="font-mono text-[10px] uppercase tracking-wider text-stone-600 mb-3">Puntos de acceso</p>
+      <div className="space-y-2">
+        {points.length === 0 && <p className="text-sm text-stone-400">Sin puntos definidos. Agrega Entrada y Salida — o solo uno "Ambas" si es un edificio de un punto.</p>}
+        {points.map(p => (
+          <div key={p.id} className="flex items-center gap-3 bg-stone-50 rounded-lg px-3 py-2">
+            <MapPin className="w-4 h-4 text-stone-500 shrink-0"/>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium truncate">{p.name || LABELS[p.label]}</p>
+              <p className="text-[10px] font-mono text-stone-500">{LABELS[p.label]} · {p.claimed ? 'tablet registrada' : 'sin tablet'}</p>
+            </div>
+            {p.claimed && (
+              <button onClick={() => reset(p)} className="text-[10px] font-mono text-stone-500 hover:text-orange-700 px-1.5 py-0.5">liberar</button>
+            )}
+            <button onClick={() => del(p)} className="text-stone-400 hover:text-red-700"><Trash2 className="w-4 h-4"/></button>
+          </div>
+        ))}
+      </div>
+      <div className="mt-3 grid grid-cols-3 gap-2">
+        {['entrada','salida','ambas'].map(l => (
+          <button key={l} onClick={() => setLabel(l)}
+            className={`text-xs rounded-lg py-2 border transition ${label===l ? 'border-orange-600 bg-orange-600 text-orange-50' : 'border-stone-300 bg-white text-stone-700'}`}>
+            {LABELS[l]}
+          </button>
+        ))}
+      </div>
+      <input value={pName} onChange={e=>setPName(e.target.value)} placeholder="Nombre del punto (opcional, ej: Garita vehicular)"
+        className="w-full mt-2 bg-white border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-orange-600"/>
+      {err && <p className="text-xs text-red-700 mt-2">{err}</p>}
+      <button disabled={busy} onClick={add}
+        className="w-full mt-2 border border-dashed border-stone-300 rounded-lg py-2 text-sm text-stone-600 hover:border-stone-400 flex items-center justify-center gap-1">
+        <Plus className="w-4 h-4"/> {busy ? 'Agregando…' : 'Agregar punto'}
+      </button>
+      <p className="text-[11px] text-stone-400 mt-2">Cada tablet elegirá su punto la primera vez que inicie sesión. "Liberar" deja el punto libre para registrar otra tablet.</p>
+    </div>
+  );
+}
+
 function AdminUsersPanel({ users, invitations, setInvitations, addLog, currentConjunto }) {
   const [sub, setSub] = useState('garita');
 
@@ -2220,6 +2294,8 @@ function AdminUsersPanel({ users, invitations, setInvitations, addLog, currentCo
             )}
           </div>
 
+          <GatePointsCard />  
+          
           <div className="bg-white rounded-xl border border-stone-200 p-4 space-y-3">
             <p className="font-mono text-[10px] uppercase tracking-wider text-stone-600">Servicio de vigilancia</p>
             <div className="grid grid-cols-2 gap-2">
