@@ -279,7 +279,7 @@ export default function App() {
   }
 }, []);
 
-  // Guardia de sesión para la garita: valida sesión + punto al entrar, cada 30 s y al volver al frente.
+  // Guardia de sesión para la garita: revalida al entrar, cada 30 s y al volver al frente.
   useEffect(() => {
     if (!USE_SUPABASE) return;
     if (!currentUser || currentUser.role !== 'guard') return;
@@ -294,26 +294,29 @@ export default function App() {
     };
 
     const check = async () => {
-      try {
-        // 1) ¿La sesión sigue válida en el servidor?
-        const { data: { user }, error: uerr } = await supabase.auth.getUser();
-        if (!alive) return;
-        if (uerr && (uerr.status === 401 || uerr.status === 403)) return kick('Tu sesión expiró. Inicia sesión de nuevo.');
-        if (uerr) return;                 // error de red: no saca a nadie
-        if (!user) return kick('Tu sesión expiró. Inicia sesión de nuevo.');
+      let fp = null;
+      try { fp = await storage.getJSON('gateFingerprint'); } catch { fp = null; }
 
-        // 2) ¿El punto sigue siendo válido?
-        const fp = await storage.getJSON('gateFingerprint').catch(() => null);
-        if (!fp) return;
-        const v = await api.gateVerify(fp).catch(() => null);
+      let v;
+      try {
+        v = await api.gateVerify(fp || '');
+      } catch (e) {
+        // ¿El servidor respondió con error (401/403/no-2xx) o fue la red?
+        const msg = String(e?.message || e || '');
+        const serverSaidNo =
+          e?.name === 'FunctionsHttpError' ||
+          /non-2xx|401|403|Unauthorized|Forbidden/i.test(msg);
         if (!alive) return;
-        if (v && v.ok && v.point) {
-          await storage.setJSON('gatePoint', v.point).catch(() => {});
-        } else if (v) {
-          return kick(v.error || 'La sesión de garita terminó en este dispositivo.');
-        }
-        // v === null → fue error de red en gateVerify: no saca, reintenta luego
-      } catch { /* red: reintenta en el próximo ciclo */ }
+        if (serverSaidNo) return kick('Tu sesión ya no es válida. Inicia sesión de nuevo.');
+        return; // error de red real: no saca a nadie, reintenta luego
+      }
+
+      if (!alive) return;
+      if (v && v.ok && v.point) {
+        await storage.setJSON('gatePoint', v.point).catch(() => {});
+      } else {
+        return kick(v?.error || 'La sesión de garita terminó en este dispositivo.');
+      }
     };
 
     const onVisible = () => { if (document.visibilityState === 'visible') check(); };
