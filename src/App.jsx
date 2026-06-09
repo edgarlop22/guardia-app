@@ -2272,6 +2272,41 @@ function AdminUsersPanel({ users, invitations, setInvitations, addLog, currentCo
       addLog('guard_removed', 'Admin', `Guardia eliminado · ${g.name}`);
     } catch (e) { alert('Error: ' + e.message); }
   };
+  // ---- PIN de guardia ----
+  const [pinFor, setPinFor]   = useState(null);
+  const [pinVal, setPinVal]   = useState('');
+  const [pinErr, setPinErr]   = useState('');
+  const [pinBusy, setPinBusy] = useState(false);
+
+  const openPin = (g) => { setPinFor(g.id); setPinVal(''); setPinErr(''); };
+  const savePin = async () => {
+    setPinErr('');
+    if (!/^\d{4}$/.test(pinVal)) return setPinErr('El PIN debe ser de 4 dígitos.');
+    setPinBusy(true);
+    try {
+      await api.setGuardPin(pinFor, pinVal);
+      setGuards(prev => prev.map(x => x.id === pinFor ? { ...x, hasPin: true, locked: false } : x));
+      addLog('guard_pin_set', 'Admin', 'PIN de guardia definido');
+      setPinFor(null); setPinVal('');
+    } catch (e) { setPinErr(e.message); } finally { setPinBusy(false); }
+  };
+  const removeGuardPin = async (g) => {
+    if (!window.confirm(`¿Quitar el PIN de ${g.name}?`)) return;
+    setPinBusy(true);
+    try {
+      await api.clearGuardPin(g.id);
+      setGuards(prev => prev.map(x => x.id === g.id ? { ...x, hasPin: false, locked: false } : x));
+      setPinFor(null);
+    } catch (e) { setPinErr(e.message); } finally { setPinBusy(false); }
+  };
+  const unlockGuardPin = async (g) => {
+    setPinBusy(true);
+    try {
+      await api.unlockGuard(g.id);
+      setGuards(prev => prev.map(x => x.id === g.id ? { ...x, locked: false } : x));
+    } catch (e) { setPinErr(e.message); } finally { setPinBusy(false); }
+  };
+
 
   // ---- Acceso de la tablet ----
   const createGate = async () => {
@@ -2438,18 +2473,56 @@ function AdminUsersPanel({ users, invitations, setInvitations, addLog, currentCo
             <p className="font-mono text-[10px] uppercase tracking-wider text-stone-600 mb-3">Guardias autorizados</p>
             <div className="space-y-2">
               {guards.length === 0 && <p className="text-sm text-stone-400">Sin guardias registrados.</p>}
-              {guards.map(g => (
-                <div key={g.id} className="flex items-center gap-3 bg-stone-50 rounded-lg px-3 py-2">
-                  <UserCheck className={`w-4 h-4 shrink-0 ${g.active ? 'text-green-700' : 'text-stone-400'}`}/>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">{g.name}</p>
-                    {g.doc && <p className="text-[10px] font-mono text-stone-500">{g.doc}</p>}
+             {guards.map(g => (
+                <div key={g.id} className="bg-stone-50 rounded-lg px-3 py-2">
+                  <div className="flex items-center gap-3">
+                    <UserCheck className={`w-4 h-4 shrink-0 ${g.active ? 'text-green-700' : 'text-stone-400'}`}/>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{g.name}</p>
+                      <p className="text-[10px] font-mono text-stone-500">
+                        {g.doc ? g.doc + ' · ' : ''}
+                        {g.locked
+                          ? <span className="text-red-700">PIN bloqueado</span>
+                          : g.hasPin
+                            ? <span className="text-green-700">PIN puesto</span>
+                            : <span className="text-amber-700">sin PIN</span>}
+                      </p>
+                    </div>
+                    <button onClick={() => openPin(g)} className="text-stone-400 hover:text-orange-700" title="PIN del guardia">
+                      <KeyRound className="w-4 h-4"/>
+                    </button>
+                    <button onClick={() => toggleGuard(g)}
+                      className={`text-[10px] font-mono px-1.5 py-0.5 rounded ${g.active ? 'bg-green-100 text-green-700' : 'bg-stone-200 text-stone-500'}`}>
+                      {g.active ? 'vigente' : 'inactivo'}
+                    </button>
+                    <button onClick={() => removeGuard(g)} className="text-stone-400 hover:text-red-700"><Trash2 className="w-4 h-4"/></button>
                   </div>
-                  <button onClick={() => toggleGuard(g)}
-                    className={`text-[10px] font-mono px-1.5 py-0.5 rounded ${g.active ? 'bg-green-100 text-green-700' : 'bg-stone-200 text-stone-500'}`}>
-                    {g.active ? 'vigente' : 'inactivo'}
-                  </button>
-                  <button onClick={() => removeGuard(g)} className="text-stone-400 hover:text-red-700"><Trash2 className="w-4 h-4"/></button>
+
+                  {pinFor === g.id && (
+                    <div className="mt-2 pt-2 border-t border-stone-200 space-y-2">
+                      <input value={pinVal}
+                        onChange={e => setPinVal(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                        inputMode="numeric" placeholder="PIN de 4 dígitos"
+                        className="w-full bg-white border border-stone-300 rounded-lg px-3 py-2 text-sm font-mono tracking-[0.4em] focus:outline-none focus:border-orange-600"/>
+                      {pinErr && <p className="text-xs text-red-700">{pinErr}</p>}
+                      <div className="flex gap-2">
+                        <button disabled={pinBusy} onClick={savePin}
+                          className="flex-1 bg-orange-600 hover:bg-orange-700 disabled:opacity-60 text-orange-50 rounded-lg py-2 text-sm font-medium">
+                          {pinBusy ? 'Guardando…' : (g.hasPin ? 'Cambiar PIN' : 'Guardar PIN')}
+                        </button>
+                        {g.locked && (
+                          <button disabled={pinBusy} onClick={() => unlockGuardPin(g)}
+                            className="px-3 border border-stone-300 text-stone-600 hover:border-stone-400 rounded-lg py-2 text-sm">Desbloquear</button>
+                        )}
+                        {g.hasPin && (
+                          <button disabled={pinBusy} onClick={() => removeGuardPin(g)}
+                            className="px-3 border border-red-300 text-red-700 hover:bg-red-50 rounded-lg py-2 text-sm">Quitar</button>
+                        )}
+                        <button onClick={() => { setPinFor(null); setPinVal(''); setPinErr(''); }}
+                          className="px-3 text-stone-500 text-sm">Cancelar</button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

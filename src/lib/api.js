@@ -606,10 +606,15 @@ export async function fetchGuards() {
   if (!USE_SUPABASE) return [];
   const { data, error } = await supabase
     .from('guards')
-    .select('*')
+    .select('id, name, doc, active, pin_hash, pin_locked_until')
     .order('created_at', { ascending: true });
   if (error) fail('fetchGuards', error);
-  return (data || []).map(g => ({ id: g.id, name: g.name, doc: g.doc || '', active: g.active }));
+  const now = Date.now();
+  return (data || []).map(g => ({
+    id: g.id, name: g.name, doc: g.doc || '', active: g.active,
+    hasPin: !!g.pin_hash,
+    locked: g.pin_locked_until ? new Date(g.pin_locked_until).getTime() > now : false,
+  }));
 }
 
 export async function createGuard({ name, doc }) {
@@ -753,4 +758,42 @@ export async function gateClaim(fingerprint, pointId) {
   const { data, error } = await supabase.functions.invoke('gate-access', { body: { action: 'gate-claim', fingerprint, pointId } });
   if (error) fail('gateClaim', error);
   return data;
+}
+
+// ============================================================
+// GARITA: PIN del guardia
+// ============================================================
+
+export async function setGuardPin(guardId, pin) {
+  const { data, error } = await supabase.functions.invoke('guard-pin', { body: { action: 'set-pin', guardId, pin } });
+  if (error) fail('setGuardPin', error);
+  if (!data?.ok) fail('setGuardPin', new Error(data?.error || 'No se pudo guardar el PIN.'));
+  return data;
+}
+
+export async function clearGuardPin(guardId) {
+  const { data, error } = await supabase.functions.invoke('guard-pin', { body: { action: 'clear-pin', guardId } });
+  if (error) fail('clearGuardPin', error);
+  if (!data?.ok) fail('clearGuardPin', new Error(data?.error || 'No se pudo quitar el PIN.'));
+  return data;
+}
+
+export async function unlockGuard(guardId) {
+  const { data, error } = await supabase.functions.invoke('guard-pin', { body: { action: 'unlock', guardId } });
+  if (error) fail('unlockGuard', error);
+  if (!data?.ok) fail('unlockGuard', new Error(data?.error || 'No se pudo desbloquear.'));
+  return data;
+}
+
+// (se usan en el paso 3b — la garita)
+export async function listGuardsForShift() {
+  const { data, error } = await supabase.functions.invoke('guard-pin', { body: { action: 'list-guards' } });
+  if (error) fail('listGuardsForShift', error);
+  return data?.guards || [];
+}
+
+export async function verifyGuardPin(guardId, pin) {
+  const { data, error } = await supabase.functions.invoke('guard-pin', { body: { action: 'verify-pin', guardId, pin } });
+  if (error) fail('verifyGuardPin', error);
+  return data; // { ok, guard } | { ok:false, error, locked? }
 }
