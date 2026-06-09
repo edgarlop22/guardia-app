@@ -1590,12 +1590,169 @@ function Field({ label, hint, children }) {
 // ============================================================
 // GUARD VIEW
 // ============================================================
+// Inactividad del turno: tras este tiempo sin tocar la pantalla, se vuelve a pedir el PIN.
+const SHIFT_IDLE_MS = 30 * 60 * 1000; // 30 min (súbelo/bájalo a gusto)
+let _shiftActivityAt = Date.now();
+
+// Pantalla para iniciar turno: elegir guardia + teclear PIN.
+function ShiftGate({ onStarted }) {
+  const [guards, setGuards]   = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [picked, setPicked]   = useState(null);
+  const [pin, setPin]         = useState('');
+  const [err, setErr]         = useState('');
+  const [busy, setBusy]       = useState(false);
+
+  const load = async () => {
+    setLoading(true); setErr('');
+    try { setGuards(await api.listGuardsForShift()); }
+    catch (e) { setErr(e.message); }
+    finally { setLoading(false); }
+  };
+  useEffect(() => { load(); }, []);
+
+  const tryPin = async (full) => {
+    setBusy(true); setErr('');
+    try {
+      const r = await api.verifyGuardPin(picked.id, full);
+      if (r?.ok && r.guard) { onStarted(r.guard); return; }
+      setErr(r?.error || 'PIN incorrecto.');
+      setPin('');
+      if (r?.locked) { await load(); setPicked(null); }
+    } catch (e) { setErr(e.message); setPin(''); }
+    finally { setBusy(false); }
+  };
+
+  const press = (d) => {
+    if (busy) return;
+    setErr('');
+    const next = (pin + d).slice(0, 4);
+    setPin(next);
+    if (next.length === 4) tryPin(next);
+  };
+  const back = () => { if (!busy) setPin(p => p.slice(0, -1)); };
+
+  const shell = (children) => (
+    <div className="bg-black text-stone-50 rounded-2xl border-2 border-orange-500/40 p-6">
+      <div className="max-w-sm mx-auto">{children}</div>
+    </div>
+  );
+
+  if (loading) return shell(<p className="text-center text-stone-400 text-sm py-8">Cargando guardias…</p>);
+
+  // Paso 1: elegir guardia
+  if (!picked) {
+    const conPin = guards.filter(g => g.hasPin);
+    return shell(
+      <>
+        <div className="flex items-center gap-3 mb-6">
+          <GuardLogo size={44}/>
+          <div>
+            <h1 className="font-display text-xl font-bold leading-tight">{BRAND.name}</h1>
+            <p className="font-mono text-[10px] text-orange-400 uppercase tracking-widest mt-0.5">Iniciar turno</p>
+          </div>
+        </div>
+        <h2 className="font-display text-2xl mb-1">¿Quién entra de turno?</h2>
+        <p className="text-stone-400 text-sm mb-5">Toca tu nombre y luego ingresa tu PIN.</p>
+        {err && <div className="bg-red-950 border border-red-800 text-red-200 rounded-lg px-3 py-2.5 text-sm mb-4">{err}</div>}
+        {conPin.length === 0 ? (
+          <p className="text-stone-400 text-sm">No hay guardias con PIN configurado. Pídele al administrador que configure los PIN en el panel.</p>
+        ) : (
+          <div className="space-y-2.5">
+            {conPin.map(g => (
+              <button key={g.id} disabled={g.locked} onClick={() => { setPicked(g); setPin(''); setErr(''); }}
+                className="w-full text-left p-4 rounded-xl border border-stone-800 bg-stone-900 hover:border-orange-500 transition flex items-center gap-3 disabled:opacity-50">
+                <UserCheck className="w-5 h-5 text-orange-400 shrink-0"/>
+                <span className="flex-1 font-medium truncate">{g.name}</span>
+                {g.locked
+                  ? <span className="text-[10px] font-mono text-red-400">bloqueado</span>
+                  : <ChevronRight className="w-5 h-5 text-stone-600"/>}
+              </button>
+            ))}
+          </div>
+        )}
+      </>
+    );
+  }
+
+  // Paso 2: teclear PIN
+  const keys = ['1','2','3','4','5','6','7','8','9','','0','⌫'];
+  return shell(
+    <>
+      <div className="flex items-center gap-3 mb-4">
+        <GuardLogo size={36}/>
+        <div className="flex-1 min-w-0">
+          <p className="font-mono text-[10px] text-orange-400 uppercase tracking-widest">Iniciar turno</p>
+          <h1 className="font-display text-lg font-bold truncate">{picked.name}</h1>
+        </div>
+        <button onClick={() => { setPicked(null); setPin(''); setErr(''); }} className="text-stone-400 hover:text-stone-200 text-sm">Cambiar</button>
+      </div>
+
+      <div className="flex justify-center gap-3 my-5">
+        {[0,1,2,3].map(i => (
+          <div key={i} className={`w-4 h-4 rounded-full border-2 ${i < pin.length ? 'bg-orange-500 border-orange-500' : 'border-stone-600'}`}/>
+        ))}
+      </div>
+
+      {err && <p className="text-center text-red-300 text-sm mb-4">{err}</p>}
+
+      <div className="grid grid-cols-3 gap-3">
+        {keys.map((k, i) => k === '' ? <div key={i}/> : (
+          <button key={i} disabled={busy} onClick={() => k === '⌫' ? back() : press(k)}
+            className="aspect-square rounded-2xl bg-stone-900 border border-stone-800 hover:border-orange-500 text-2xl font-display disabled:opacity-50 flex items-center justify-center">
+            {k}
+          </button>
+        ))}
+      </div>
+      {busy && <p className="text-center text-stone-500 text-xs mt-4 font-mono">verificando…</p>}
+    </>
+  );
+}
+
 function GuardView({ auths, setAuths, addLog, notifyResident, currentUser, currentConjunto }) {
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState(null);      // entry modal
   const [exitTarget, setExitTarget] = useState(null);  // exit modal
   const [lastConfirmed, setLastConfirmed] = useState(null);
   const [tab, setTab] = useState('expected');          // 'expected' | 'inside'
+  const [activeGuard, setActiveGuard] = useState(null);
+
+  const startShift = async (g) => {
+    await storage.setJSON('gateShift', { id: g.id, name: g.name, startedAt: new Date().toISOString() }).catch(() => {});
+    _shiftActivityAt = Date.now();
+    setActiveGuard({ id: g.id, name: g.name });
+    addLog('shift_start', 'Garita', `Turno iniciado · ${g.name}`);
+  };
+  const endShift = async (auto) => {
+    await storage.remove('gateShift').catch(() => {});
+    setActiveGuard(null);
+    addLog('shift_end', 'Garita', auto ? 'Turno cerrado por inactividad' : 'Turno terminado');
+  };
+
+  // Restaurar turno guardado (aguanta recargas); descarta turnos viejos (>16 h).
+  useEffect(() => {
+    (async () => {
+      try {
+        const s = await storage.getJSON('gateShift');
+        if (s && s.id && s.name) {
+          const old = s.startedAt && (Date.now() - new Date(s.startedAt).getTime() > 16 * 60 * 60 * 1000);
+          if (old) await storage.remove('gateShift').catch(() => {});
+          else { _shiftActivityAt = Date.now(); setActiveGuard({ id: s.id, name: s.name }); }
+        }
+      } catch {}
+    })();
+  }, []);
+
+  // Cierre por inactividad: cada toque en pantalla refresca; si pasa el tiempo sin tocar, se cierra el turno.
+  useEffect(() => {
+    if (!activeGuard) return;
+    const bump = () => { _shiftActivityAt = Date.now(); };
+    window.addEventListener('pointerdown', bump);
+    const id = setInterval(() => {
+      if (Date.now() - _shiftActivityAt > SHIFT_IDLE_MS) endShift(true);
+    }, 60 * 1000);
+    return () => { window.removeEventListener('pointerdown', bump); clearInterval(id); };
+  }, [activeGuard]);
 
   const todayAuths = auths.filter(a => {
     const s = authStatus(a);
@@ -1628,7 +1785,7 @@ function GuardView({ auths, setAuths, addLog, notifyResident, currentUser, curre
           exitedAt: null, dayClosedDate: null,
           lastTransport: transportInfo.transport, lastPlate: transportInfo.plate }
       : x));
-    addLog('entry', `Garita · ${currentUser.name.split('—')[0].trim()}`,
+    addLog('entry', `Garita · ${activeGuard?.name || 'Garita'}`,
       `Ingreso registrado — ${a.visitorName} (${vehicleDesc}) → Casa ${a.house}`);
     notifyResident({
       conjuntoId: currentConjunto?.id, event: 'entry',
@@ -1659,7 +1816,7 @@ function GuardView({ auths, setAuths, addLog, notifyResident, currentUser, curre
           dayClosedDate: TODAY_STR }
       : x));
     const auditNote = unregistered ? ' ⚠ SIN ENTRADA REGISTRADA' : '';
-    addLog('exit', `Garita · ${currentUser.name.split('—')[0].trim()}`,
+    addLog('exit', `Garita · ${activeGuard?.name || 'Garita'}`,
       `Salida registrada — ${a.visitorName} → Casa ${a.house}${auditNote}`);
     notifyResident({
       conjuntoId: currentConjunto?.id, event: 'exit',
@@ -1670,6 +1827,7 @@ function GuardView({ auths, setAuths, addLog, notifyResident, currentUser, curre
     setExitTarget(null);
     setTimeout(() => setLastConfirmed(null), 5000);
   };
+  if (!activeGuard) return <ShiftGate onStarted={startShift} />;
 
   return (
     <div className="space-y-5">
@@ -1706,7 +1864,10 @@ function GuardView({ auths, setAuths, addLog, notifyResident, currentUser, curre
       <div className="bg-black text-orange-50 rounded-2xl p-5 border-2 border-orange-500 shadow-lg shadow-orange-500/10">
         <div className="flex items-center justify-between">
           <div>
-            <p className="font-mono text-[10px] uppercase tracking-widest text-orange-400">Garita · Turno actual</p>
+            <div className="flex items-center gap-2">
+              <p className="font-mono text-[10px] uppercase tracking-widest text-orange-400">Turno · {activeGuard.name}</p>
+              <button onClick={() => endShift(false)} className="text-[10px] font-mono text-stone-400 hover:text-orange-300 underline underline-offset-2">terminar</button>
+            </div>
             <h2 className="font-display text-2xl mt-1">
               {tab === 'expected' ? 'Visitantes esperados hoy' : 'Adentro ahora'}
             </h2>
