@@ -209,6 +209,7 @@ function closedToday(a) {
 }
 
 function authStatus(a) {
+  if (a.revoked) return 'revoked';
   if (isInside(a)) return 'inside';
   if (a.used) return 'used';
   if (a.type === 'single') {
@@ -232,6 +233,7 @@ const statusMeta = {
   used:      { label: 'INGRESÓ',     cls: 'bg-black text-orange-300' },
   inside:    { label: 'ADENTRO',     cls: 'bg-green-600 text-white font-bold' },
   exited:    { label: 'SALIÓ',       cls: 'bg-stone-300 text-stone-700' },
+  revoked:   { label: 'CANCELADA',   cls: 'bg-red-100 text-red-800 border border-red-300' },
 };
 
 // ============================================================
@@ -1149,12 +1151,27 @@ function ResidentView({ house, device, auths, setAuths, addLog, notifications, s
   const label = houseLabel(house);
   const myAuths = auths.filter(a => a.house === label);
   const active   = myAuths.filter(a => ['today','active','scheduled'].includes(authStatus(a)));
-  const expired  = myAuths.filter(a => ['expired','used'].includes(authStatus(a)));
+  const expired  = myAuths.filter(a => ['expired','used','revoked'].includes(authStatus(a)));
 
   const myNotifs = notifications.filter(n => n.house === label);
   const unread = myNotifs.filter(n => !n.seen).length;
 
   const markAllSeen = () => setNotifications(prev => prev.map(n => n.house === label ? { ...n, seen: true } : n));
+
+  const cancelAuth = async (a) => {
+    if (!window.confirm(`¿Cancelar la autorización de ${a.visitorName}? La garita ya no la dejará entrar.`)) return;
+    if (USE_SUPABASE) {
+      try {
+        await api.revokeAuthorization(a.id);
+      } catch (e) {
+        alert('No se pudo cancelar: ' + e.message);
+        return;
+      }
+    }
+    setAuths(prev => prev.map(x => x.id === a.id ? { ...x, revoked: true } : x));
+    addLog('auth_revoked', `${device?.name?.split('—')[1]?.trim() || 'Residente'} (${label})`,
+      `Autorización cancelada — ${a.visitorName}`);
+  };
 
   return (
     <div className="space-y-6">
@@ -1196,7 +1213,7 @@ function ResidentView({ house, device, auths, setAuths, addLog, notifications, s
         <div className="space-y-2">
           {active.length === 0 && <EmptyState text="No tienes visitas autorizadas." />}
           {active.map(a => (
-            <AuthCard key={a.id} a={a} onRenew={(a) => { setRenewing(a); setShowForm(true); }} />
+            <AuthCard key={a.id} a={a} onRenew={(a) => { setRenewing(a); setShowForm(true); }} onCancel={cancelAuth} />
           ))}
         </div>
       </section>
@@ -1252,10 +1269,11 @@ function ResidentView({ house, device, auths, setAuths, addLog, notifications, s
   );
 }
 
-function AuthCard({ a, historical, onRenew }) {
+function AuthCard({ a, historical, onRenew, onCancel }) {
   const st = authStatus(a);
   const m = statusMeta[st];
   const canRenew = a.type === 'recurring' && (st === 'expired' || st === 'active');
+  const canCancel = !historical && onCancel && ['today','active','scheduled'].includes(st);
   return (
     <div className={`bg-white rounded-xl border border-stone-200 p-4 ${historical ? 'opacity-70' : ''}`}>
       <div className="flex items-start justify-between gap-3">
@@ -1275,11 +1293,21 @@ function AuthCard({ a, historical, onRenew }) {
             {a.type === 'recurring' && a.docUploaded && <span className="flex items-center gap-1"><FileText className="w-3 h-3"/>doc.</span>}
           </div>
         </div>
-        {canRenew && (
-          <button onClick={() => onRenew(a)}
-            className="shrink-0 text-xs px-3 py-1.5 rounded-lg border border-orange-600/20 text-orange-600 hover:bg-orange-50 flex items-center gap-1">
-            <RefreshCw className="w-3 h-3"/> Renovar
-          </button>
+        {(canRenew || canCancel) && (
+          <div className="shrink-0 flex flex-col gap-1.5 items-end">
+            {canRenew && (
+              <button onClick={() => onRenew(a)}
+                className="text-xs px-3 py-1.5 rounded-lg border border-orange-600/20 text-orange-600 hover:bg-orange-50 flex items-center gap-1">
+                <RefreshCw className="w-3 h-3"/> Renovar
+              </button>
+            )}
+            {canCancel && (
+              <button onClick={() => onCancel(a)}
+                className="text-xs px-3 py-1.5 rounded-lg border border-red-200 text-red-700 hover:bg-red-50 flex items-center gap-1">
+                <Trash2 className="w-3 h-3"/> Cancelar
+              </button>
+            )}
+          </div>
         )}
       </div>
     </div>
@@ -1776,7 +1804,7 @@ function GuardView({ auths, setAuths, addLog, notifyResident, currentUser, curre
     return s === 'today' || s === 'active';
   });
 
-  const insideAuths = auths.filter(isInside);
+  const insideAuths = auths.filter(a => isInside(a) && !a.revoked);
 
   const filtered = todayAuths.filter(a =>
     !query ||

@@ -350,6 +350,18 @@ export async function createAuthorization(input) {
   return data;
 }
 
+export async function revokeAuthorization(id) {
+  if (!USE_SUPABASE) return null;
+  const { data, error } = await supabase
+    .from('authorizations')
+    .update({ revoked: true })
+    .eq('id', id)
+    .select()
+    .single();
+  if (error) fail('revokeAuthorization', error);
+  return data;
+}
+
 // ============================================================
 // ENTRIES (guard registers visitor arriving)
 // ============================================================
