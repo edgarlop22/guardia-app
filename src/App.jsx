@@ -43,7 +43,7 @@ function GuardLogo({ size = 40, glow = true, className = '' }) {
 }
 
 // ===== System date (matches assistant context) =====
-const TODAY_STR = '2026-05-19';
+const TODAY_STR = new Date().toLocaleDateString('en-CA'); // fecha real de hoy (local), formato YYYY-MM-DD
 const todayObj = new Date(TODAY_STR + 'T00:00:00');
 const fmtDate = (d) => new Date(d + 'T00:00:00').toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric' });
 const fmtDateTime = (iso) => new Date(iso).toLocaleString('es-CO', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
