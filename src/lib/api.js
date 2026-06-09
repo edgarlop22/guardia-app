@@ -280,7 +280,7 @@ export async function createHouse({ unitType, numero, manzana, fase, addressExtr
 
 export async function fetchAuthorizations({ houseId, role } = {}) {
   if (!USE_SUPABASE) return [];
-  let q = supabase.from('authorizations').select('*');
+  let q = supabase.from('authorizations').select('*, houses(numero, manzana, fase)');
   if (houseId) q = q.eq('house_id', houseId);
   q = q.order('created_at', { ascending: false });
   const { data, error } = await q;
@@ -293,7 +293,12 @@ export async function fetchAuthorizations({ houseId, role } = {}) {
     type: a.type,
     visitorName: a.visitor_name,
     visitorDoc: a.visitor_doc,
-    house: null, // will be denormalized in joins or computed in UI
+    house: (() => {
+      const h = a.houses || {};
+      return [h.manzana, h.fase, h.numero]
+        .map(x => (x || '').toString().trim())
+        .filter(Boolean).join('-') || 's/n';   // misma fórmula que houseLabel en App.jsx
+    })(),
     hostName: null,
     deviceId: a.device_id,
     date: a.date,
