@@ -1142,7 +1142,7 @@ function TopBar({ currentUser, currentConjunto, onLogout }) {
 // ============================================================
 // RESIDENT VIEW
 // ============================================================
-function ResidentView({ house, device, auths, setAuths, addLog, notifications, setNotifications, pushPermission }) {
+function ResidentView({ house, device, auths, setAuths, addLog, notifications, setNotifications, currentUser, currentConjunto, pushPermission }) {
   const [showForm, setShowForm] = useState(false);
   const [renewing, setRenewing] = useState(null);
 
@@ -1215,16 +1215,33 @@ function ResidentView({ house, device, auths, setAuths, addLog, notifications, s
           house={house} device={device}
           renewing={renewing}
           onClose={() => { setShowForm(false); setRenewing(null); }}
-          onSave={(data) => {
+          onSave={async (data) => {
             const id = 'a' + Date.now();
-            const newAuth = { id, ...data, house: houseLabel(house), deviceId: device.id, createdAt: new Date().toISOString(), used: false };
+            const newAuth = {
+              id, ...data,
+              conjuntoId: currentConjunto?.id,        // ← sin esto, el filtro lo descarta
+              house: houseLabel(house),
+              deviceId: device?.id,
+              createdAt: new Date().toISOString(),
+              used: false,
+            };
             if (renewing) {
               newAuth.renewalCount = (renewing.renewalCount || 0) + 1;
-              addLog('renewal', `${device.name.split('—')[1]?.trim() || 'Residente'} (${houseLabel(house)})`,
+              addLog('renewal', `${device?.name.split('—')[1]?.trim() || 'Residente'} (${houseLabel(house)})`,
                 `Renovación recurrente — ${data.visitorName} (renovación #${newAuth.renewalCount})`);
             } else {
-              addLog('auth_created', `${device.name.split('—')[1]?.trim() || 'Residente'} (${houseLabel(house)})`,
+              addLog('auth_created', `${device?.name.split('—')[1]?.trim() || 'Residente'} (${houseLabel(house)})`,
                 `${data.type === 'single' ? 'Autorización única' : 'Recurrente'} — ${data.visitorName}`);
+            }
+            // Guardar en Supabase (cuando el backend está activo)
+            if (USE_SUPABASE) {
+              try {
+                const row = await api.createAuthorization(data);   // ← esto faltaba por completo
+                if (row?.id) newAuth.id = row.id;                  // usar el id real de la base
+              } catch (e) {
+                alert('No se pudo guardar la autorización: ' + e.message);
+                return; // si el guardado falla, no la metemos a la lista
+              }
             }
             setAuths(prev => [newAuth, ...prev]);
             setShowForm(false); setRenewing(null);
