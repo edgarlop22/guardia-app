@@ -379,13 +379,21 @@ export async function registerEntry({ authorizationId, photoDataUrl, transport, 
     .single();
   if (authErr) fail('registerEntry/auth', authErr);
 
-  // Upload the photo to visitor-photos bucket
-  const photoBlob = await dataUrlToBlob(photoDataUrl);
-  const path = `${conjunto.id}/${auth.house_id}/${Date.now()}.jpg`;
-  const { error: upErr } = await supabase.storage
-    .from('visitor-photos')
-    .upload(path, photoBlob, { contentType: 'image/jpeg' });
-  if (upErr) fail('registerEntry/photo', upErr);
+  // Subir la foto (best-effort: si la foto falla, igual registramos la entrada)
+  let photoPath = null;
+  if (photoDataUrl) {
+    try {
+      const photoBlob = await dataUrlToBlob(photoDataUrl);
+      const path = `${conjunto.id}/${auth.house_id}/${Date.now()}.jpg`;
+      const { error: upErr } = await supabase.storage
+        .from('visitor-photos')
+        .upload(path, photoBlob, { contentType: 'image/jpeg' });
+      if (upErr) console.error('[registerEntry/photo]', upErr);
+      else photoPath = path;
+    } catch (e) {
+      console.error('[registerEntry/photo]', e);
+    }
+  }
 
   const { error: entryErr } = await supabase
     .from('entries')
@@ -394,9 +402,11 @@ export async function registerEntry({ authorizationId, photoDataUrl, transport, 
       authorization_id: authorizationId,
       house_id: auth.house_id,
       guard_id: profile.id,
-      photo_url: path,
+      photo_url: photoPath,
       transport,
       vehicle_plate: transport === 'foot' ? null : vehiclePlate,
+    });
+  if (entryErr) fail('registerEntry/entry', entryErr);
     });
   if (entryErr) fail('registerEntry/entry', entryErr);
 

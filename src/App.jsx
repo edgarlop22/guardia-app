@@ -1820,10 +1820,26 @@ function GuardView({ auths, setAuths, addLog, notifyResident, currentUser, curre
     a.visitorDoc.toLowerCase().includes(query.toLowerCase())
   );
 
-  const registerEntry = (a, transportInfo) => {
+  const registerEntry = async (a, transportInfo) => {
     const vehicleDesc = transportInfo.transport === 'foot'
       ? 'a pie'
       : `${transportInfo.transport === 'car' ? 'auto' : 'moto'} placa ${transportInfo.plate}`;
+
+    // Persistir el ingreso en Supabase (igual que la salida)
+    if (USE_SUPABASE) {
+      try {
+        await api.registerEntry({
+          authorizationId: a.id,
+          photoDataUrl: transportInfo.photo,
+          transport: transportInfo.transport,
+          vehiclePlate: transportInfo.plate,
+        });
+      } catch (e) {
+        console.error('registerEntry failed', e);
+        alert('No se pudo registrar el ingreso: ' + (e?.message || e));
+        return; // si no se guardó, no mentimos en pantalla
+      }
+    }
 
     setAuths(prev => prev.map(x => x.id === a.id
       ? { ...x, used: a.type === 'single' ? true : x.used, enteredAt: new Date().toISOString(),
