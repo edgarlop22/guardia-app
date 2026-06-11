@@ -371,7 +371,7 @@ export async function registerEntry({ authorizationId, photoDataUrl, transport, 
   const conjunto = await fetchMyConjunto();
   const profile = await fetchMyProfile();
 
-  // Fetch the authorization to get house_id
+  // Traer la autorización para conocer su house_id
   const { data: auth, error: authErr } = await supabase
     .from('authorizations')
     .select('id, house_id')
@@ -395,6 +395,7 @@ export async function registerEntry({ authorizationId, photoDataUrl, transport, 
     }
   }
 
+  // Insertar el evento de entrada
   const { error: entryErr } = await supabase
     .from('entries')
     .insert({
@@ -408,9 +409,7 @@ export async function registerEntry({ authorizationId, photoDataUrl, transport, 
     });
   if (entryErr) fail('registerEntry/entry', entryErr);
 
-
-  // Mark authorization as used (single-day) and record entry snapshot.
-  // Reset exit fields so the visitor shows as currently inside.
+  // Sellar la autorización ÚNICA como usada + adentro
   await supabase
     .from('authorizations')
     .update({
@@ -424,7 +423,7 @@ export async function registerEntry({ authorizationId, photoDataUrl, transport, 
     .eq('id', authorizationId)
     .eq('type', 'single');
 
-  // For recurring passes, record the entry snapshot without consuming the pass
+  // Para RECURRENTES: registrar la entrada sin consumir el pase
   await supabase
     .from('authorizations')
     .update({
@@ -436,9 +435,6 @@ export async function registerEntry({ authorizationId, photoDataUrl, transport, 
     })
     .eq('id', authorizationId)
     .eq('type', 'recurring');
-
-  // The Edge Function 'notify-resident' will fire on the entries INSERT trigger
-  // and send the push notification.
 }
 
 // ============================================================
