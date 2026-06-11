@@ -123,6 +123,32 @@ export function useBackend(currentUser) {
     return unsub;
   }, [currentUser]);
 
+ // Auto-refresh de autorizaciones: al iniciar sesión, cada 20 s, y al volver al frente.
+  // Mantiene viva la garita (ve visitas nuevas / cancelaciones) y al residente
+  // (ve cuando su visita entra o sale) sin tener que refrescar a mano.
+  useEffect(() => {
+    if (!USE_SUPABASE || !currentUser) return;
+    if (currentUser.role !== 'guard' && currentUser.role !== 'resident') return;
+    let alive = true;
+    const refresh = async () => {
+      try {
+        const fresh = await api.fetchAuthorizations();
+        if (alive) setAuths(fresh);
+      } catch (e) { /* silencio: reintenta en el próximo ciclo */ }
+    };
+    refresh(); // de una, al iniciar sesión (mata el dato viejo del login)
+    const id = setInterval(refresh, 20000);
+    const onVisible = () => { if (document.visibilityState === 'visible') refresh(); };
+    document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('focus', onVisible);
+    return () => {
+      alive = false;
+      clearInterval(id);
+      document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('focus', onVisible);
+    };
+  }, [currentUser]);
+
   return {
     conjuntos, setConjuntos,
     houses, setHouses,
