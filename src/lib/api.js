@@ -407,8 +407,7 @@ export async function registerEntry({ authorizationId, photoDataUrl, transport, 
       vehicle_plate: transport === 'foot' ? null : vehiclePlate,
     });
   if (entryErr) fail('registerEntry/entry', entryErr);
-    });
-  if (entryErr) fail('registerEntry/entry', entryErr);
+
 
   // Mark authorization as used (single-day) and record entry snapshot.
   // Reset exit fields so the visitor shows as currently inside.
