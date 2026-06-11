@@ -412,7 +412,7 @@ export async function registerEntry({ authorizationId, photoDataUrl, transport, 
     });
   if (entryErr) fail('registerEntry/entry', entryErr);
 
-  // Sellar la autorización ÚNICA como usada + adentro
+  // Sellar la autorización ÚNICA como usada + adentro (con la foto)
   await supabase
     .from('authorizations')
     .update({
@@ -422,11 +422,12 @@ export async function registerEntry({ authorizationId, photoDataUrl, transport, 
       day_closed_date: null,
       last_transport: transport,
       last_plate: transport === 'foot' ? null : vehiclePlate,
+      last_photo_url: photoPath,
     })
     .eq('id', authorizationId)
     .eq('type', 'single');
 
-  // Para RECURRENTES: registrar la entrada sin consumir el pase
+  // Para RECURRENTES: registrar la entrada sin consumir el pase (con la foto)
   await supabase
     .from('authorizations')
     .update({
@@ -435,17 +436,10 @@ export async function registerEntry({ authorizationId, photoDataUrl, transport, 
       day_closed_date: null,
       last_transport: transport,
       last_plate: transport === 'foot' ? null : vehiclePlate,
+      last_photo_url: photoPath,
     })
     .eq('id', authorizationId)
     .eq('type', 'recurring');
-
-  // Guardar la ruta de la foto en la autorización (para mostrarla en las vistas)
-  if (photoPath) {
-    await supabase
-      .from('authorizations')
-      .update({ last_photo_url: photoPath })
-      .eq('id', authorizationId);
-  }
 }
 
 // ============================================================
