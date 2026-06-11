@@ -1897,9 +1897,28 @@ function GuardView({ auths, setAuths, addLog, notifyResident, currentUser, curre
       house: a.house, visitorName: a.visitorName, visitorDoc: a.visitorDoc,
     });
     addLog('notification_sent', 'Sistema', `Notificación enviada a Casa ${a.house} — salida de ${a.visitorName}`);
-    setLastConfirmed({ kind: 'exit', name: a.visitorName, house: a.house, unregistered });
+    setLastConfirmed({ kind: 'exit', authId: a.id, name: a.visitorName, house: a.house, unregistered });
     setExitTarget(null);
-    setTimeout(() => setLastConfirmed(null), 5000);
+    setTimeout(() => setLastConfirmed(null), 20000); // ventana para "Deshacer"
+  };
+
+  // Deshacer la última salida (por si el guardia se equivocó de visitante).
+  const undoLastExit = async (lc) => {
+    if (USE_SUPABASE) {
+      try {
+        await api.undoExit(lc.authId);
+      } catch (e) {
+        console.error('undoExit failed', e);
+        alert('No se pudo deshacer la salida: ' + (e?.message || e));
+        return;
+      }
+    }
+    setAuths(prev => prev.map(x => x.id === lc.authId
+      ? { ...x, exitedAt: null, dayClosedDate: null }
+      : x));
+    addLog('exit_undo', `Garita · ${activeGuard?.name || 'Garita'}`,
+      `Salida ANULADA — ${lc.name} → Casa ${lc.house} (corrección)`);
+    setLastConfirmed(null);
   };
   if (!activeGuard) return <ShiftGate onStarted={startShift} />;
 
@@ -1931,7 +1950,14 @@ function GuardView({ auths, setAuths, addLog, notifyResident, currentUser, curre
               </>
             )}
           </div>
-          <CheckCircle2 className={`w-5 h-5 shrink-0 ${lastConfirmed.kind === 'exit' ? 'text-green-400' : 'text-orange-400'}`}/>
+          {lastConfirmed.kind === 'exit' ? (
+            <button onClick={() => undoLastExit(lastConfirmed)}
+              className="shrink-0 text-xs font-bold px-3 py-1.5 rounded-lg bg-green-500 text-black hover:bg-green-400 flex items-center gap-1">
+              <RefreshCw className="w-3.5 h-3.5"/> Deshacer
+            </button>
+          ) : (
+            <CheckCircle2 className="w-5 h-5 shrink-0 text-orange-400"/>
+          )}
         </div>
       )}
 
@@ -4041,6 +4067,7 @@ function LogsPanel({ logs }) {
     renewal:           { color: 'text-amber-700',   label: 'RENOVACIÓN' },
     entry:             { color: 'text-black',       label: 'INGRESO' },
     exit:              { color: 'text-green-700',   label: 'SALIDA' },
+    exit_undo:         { color: 'text-red-700',     label: 'SALIDA ANULADA' },
     notification_sent: { color: 'text-blue-700',    label: 'NOTIFICACIÓN' },
     device_added:      { color: 'text-orange-700',  label: 'DISP. AGREGADO' },
     device_removed:    { color: 'text-red-700',     label: 'DISP. REVOCADO' },

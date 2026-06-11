@@ -476,14 +476,29 @@ export async function registerExit({ authorizationId, unregistered = false }) {
     .from('authorizations')
     .update({ exited_at: exitTs, day_closed_date: todayStr })
     .eq('id', authorizationId);
-  if (upErr) fail('registerExit/update', upErr);
+ if (upErr) fail('registerExit/update', upErr);
 
   // notify-resident Edge Function fires on this INSERT and pushes the exit alert.
 }
 
+// Deshacer una salida registrada por error: reabre la visita (vuelve a "adentro").
+// No borra el registro de salida en `entries` (la auditoría conserva que ocurrió);
+// solo limpia el sello de la autorización para que la persona vuelva a contar adentro.
+export async function undoExit(authorizationId) {
+  if (!USE_SUPABASE) return null;
+  const { data, error } = await supabase
+    .from('authorizations')
+    .update({ exited_at: null, day_closed_date: null })
+    .eq('id', authorizationId)
+    .select();
+  if (error) fail('undoExit', error);
+  if (!data || data.length === 0) throw new Error('No se pudo deshacer la salida.');
+  return data[0];
+}
+
 // ============================================================
 // INVITATIONS
-// ============================================================
+// ============================================================ 
 
 export async function fetchInvitations() {
   if (!USE_SUPABASE) return [];
