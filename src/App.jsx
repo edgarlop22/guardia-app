@@ -1216,7 +1216,12 @@ function ResidentView({ house, device, auths, setAuths, addLog, notifications, s
             Adentro ahora <span className="font-mono text-sm text-stone-500">({inside.length})</span>
           </h3>
           <div className="space-y-2">
-            {inside.map(a => <AuthCard key={a.id} a={a} />)}
+            {inside.map(a => (
+              <div key={a.id} className="flex gap-3 items-start">
+                {a.lastPhotoUrl && <VisitorPhoto path={a.lastPhotoUrl} className="w-16 h-16 shrink-0" />}
+                <div className="flex-1 min-w-0"><AuthCard a={a} /></div>
+              </div>
+            ))}
           </div>
         </section>
       )}
@@ -1280,6 +1285,19 @@ function ResidentView({ house, device, auths, setAuths, addLog, notifications, s
       )}
     </div>
   );
+}
+
+function VisitorPhoto({ path, className = '' }) {
+  const [url, setUrl] = useState(null);
+  useEffect(() => {
+    let alive = true;
+    if (!path) { setUrl(null); return; }
+    api.getSignedPhotoUrl(path).then(u => { if (alive) setUrl(u); }).catch(() => {});
+    return () => { alive = false; };
+  }, [path]);
+  if (!path) return null;
+  if (!url) return <div className={`bg-stone-200 animate-pulse rounded-lg ${className}`} />;
+  return <img src={url} alt="Visitante" className={`object-cover rounded-lg ${className}`} />;
 }
 
 function AuthCard({ a, historical, onRenew, onCancel }) {
@@ -1899,7 +1917,7 @@ function GuardView({ auths, setAuths, addLog, notifyResident, currentUser, curre
     addLog('notification_sent', 'Sistema', `Notificación enviada a Casa ${a.house} — salida de ${a.visitorName}`);
     setLastConfirmed({ kind: 'exit', authId: a.id, name: a.visitorName, house: a.house, unregistered });
     setExitTarget(null);
-    setTimeout(() => setLastConfirmed(null), 20000); // ventana para "Deshacer"
+    setTimeout(() => setLastConfirmed(null), 12000); // ventana para "Deshacer"
   };
 
   // Deshacer la última salida (por si el guardia se equivocó de visitante).

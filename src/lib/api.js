@@ -300,6 +300,7 @@ export async function fetchAuthorizations({ houseId, role } = {}) {
         .filter(Boolean).join('-') || 's/n';   // misma fórmula que houseLabel en App.jsx
     })(),
     hostName: null,
+    lastPhotoUrl: a.last_photo_url || null,
     deviceId: a.device_id,
     date: a.date,
     startDate: a.start_date,
@@ -437,6 +438,14 @@ export async function registerEntry({ authorizationId, photoDataUrl, transport, 
     })
     .eq('id', authorizationId)
     .eq('type', 'recurring');
+
+  // Guardar la ruta de la foto en la autorización (para mostrarla en las vistas)
+  if (photoPath) {
+    await supabase
+      .from('authorizations')
+      .update({ last_photo_url: photoPath })
+      .eq('id', authorizationId);
+  }
 }
 
 // ============================================================
@@ -494,6 +503,17 @@ export async function undoExit(authorizationId) {
   if (error) fail('undoExit', error);
   if (!data || data.length === 0) throw new Error('No se pudo deshacer la salida.');
   return data[0];
+}
+
+// Generar un enlace firmado (temporal) para ver una foto de visitante.
+// El bucket es privado, así que no sirve una URL directa.
+export async function getSignedPhotoUrl(path) {
+  if (!USE_SUPABASE || !path) return null;
+  const { data, error } = await supabase.storage
+    .from('visitor-photos')
+    .createSignedUrl(path, 3600); // válido 1 hora
+  if (error) { console.error('[getSignedPhotoUrl]', error); return null; }
+  return data?.signedUrl || null;
 }
 
 // ============================================================
