@@ -2067,9 +2067,13 @@ function GuardView({ auths, setAuths, addLog, notifyResident, currentUser, curre
           {filteredInside.map(a => (
             <div key={a.id}
               className="w-full bg-white rounded-xl border border-green-200 p-4 flex items-center gap-3">
-              <div className="w-11 h-11 rounded-full bg-green-50 flex items-center justify-center shrink-0 border border-green-200">
-                <MapPin className="w-5 h-5 text-green-600"/>
-              </div>
+              {a.lastPhotoUrl ? (
+                <VisitorPhoto path={a.lastPhotoUrl} className="w-11 h-11 shrink-0 border border-green-200" />
+              ) : (
+                <div className="w-11 h-11 rounded-full bg-green-50 flex items-center justify-center shrink-0 border border-green-200">
+                  <MapPin className="w-5 h-5 text-green-600"/>
+                </div>
+              )}
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-green-600 text-white font-bold">ADENTRO</span>
