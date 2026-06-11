@@ -1150,8 +1150,9 @@ function ResidentView({ house, device, auths, setAuths, addLog, notifications, s
 
   const label = houseLabel(house);
   const myAuths = auths.filter(a => a.house === label);
+  const inside   = myAuths.filter(a => authStatus(a) === 'inside');
   const active   = myAuths.filter(a => ['today','active','scheduled'].includes(authStatus(a)));
-  const expired  = myAuths.filter(a => ['expired','used','revoked'].includes(authStatus(a)));
+  const expired  = myAuths.filter(a => ['expired','used','revoked','exited'].includes(authStatus(a)));
 
   const myNotifs = notifications.filter(n => n.house === label);
   const unread = myNotifs.filter(n => !n.seen).length;
@@ -1206,6 +1207,18 @@ function ResidentView({ house, device, auths, setAuths, addLog, notifications, s
 
       {myNotifs.length > 0 && (
         <NotificationsPanel notifs={myNotifs} unread={unread} onMarkSeen={markAllSeen} />
+      )}
+
+      {inside.length > 0 && (
+        <section>
+          <h3 className="font-display text-2xl mb-3 flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+            Adentro ahora <span className="font-mono text-sm text-stone-500">({inside.length})</span>
+          </h3>
+          <div className="space-y-2">
+            {inside.map(a => <AuthCard key={a.id} a={a} />)}
+          </div>
+        </section>
       )}
 
       <section>
