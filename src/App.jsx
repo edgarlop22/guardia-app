@@ -1857,9 +1857,10 @@ function GuardView({ auths, setAuths, addLog, notifyResident, currentUser, curre
       : `${transportInfo.transport === 'car' ? 'auto' : 'moto'} placa ${transportInfo.plate}`;
 
     // Persistir el ingreso en Supabase (igual que la salida)
+    let entryResult = null;
     if (USE_SUPABASE) {
       try {
-        await api.registerEntry({
+        entryResult = await api.registerEntry({
           authorizationId: a.id,
           photoDataUrl: transportInfo.photo,
           transport: transportInfo.transport,
@@ -1875,7 +1876,8 @@ function GuardView({ auths, setAuths, addLog, notifyResident, currentUser, curre
     setAuths(prev => prev.map(x => x.id === a.id
       ? { ...x, used: a.type === 'single' ? true : x.used, enteredAt: new Date().toISOString(),
           exitedAt: null, dayClosedDate: null,
-          lastTransport: transportInfo.transport, lastPlate: transportInfo.plate }
+          lastTransport: transportInfo.transport, lastPlate: transportInfo.plate,
+          lastPhotoUrl: entryResult?.photoPath ?? x.lastPhotoUrl }
       : x));
     addLog('entry', `Garita · ${activeGuard?.name || 'Garita'}`,
       `Ingreso registrado — ${a.visitorName} (${vehicleDesc}) → Casa ${a.house}`);

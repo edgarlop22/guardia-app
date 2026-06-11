@@ -440,6 +440,8 @@ export async function registerEntry({ authorizationId, photoDataUrl, transport, 
     })
     .eq('id', authorizationId)
     .eq('type', 'recurring');
+
+  return { photoPath };
 }
 
 // ============================================================
