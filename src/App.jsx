@@ -2205,8 +2205,14 @@ function GuardExitModal({ target, auths, onClose, onConfirm }) {
             </>
           )}
 
-          {!manual && (
+         {!manual && (
             <>
+              {picked.lastPhotoUrl && (
+                <div className="flex flex-col items-center gap-2">
+                  <VisitorPhoto path={picked.lastPhotoUrl} className="w-32 h-32" />
+                  <p className="font-mono text-[10px] uppercase tracking-wider text-stone-500">Foto de ingreso · verifica que coincida</p>
+                </div>
+              )}
               <DetailRow label="Casa de destino" value={`Casa ${picked.house}`}/>
               <DetailRow label="Entró" value={fmtDateTime(picked.enteredAt)}/>
               {picked.lastTransport && picked.lastTransport !== 'foot' && (
