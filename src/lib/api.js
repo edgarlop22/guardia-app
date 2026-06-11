@@ -356,10 +356,12 @@ export async function revokeAuthorization(id) {
     .from('authorizations')
     .update({ revoked: true })
     .eq('id', id)
-    .select()
-    .single();
+    .select();                 // sin .single(): 0 filas no es un crash, es info
   if (error) fail('revokeAuthorization', error);
-  return data;
+  if (!data || data.length === 0) {
+    throw new Error('La visita ya ingresó (o no tienes permiso), no se puede cancelar.');
+  }
+  return data[0];
 }
 
 // ============================================================

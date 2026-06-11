@@ -1273,7 +1273,7 @@ function AuthCard({ a, historical, onRenew, onCancel }) {
   const st = authStatus(a);
   const m = statusMeta[st];
   const canRenew = a.type === 'recurring' && (st === 'expired' || st === 'active');
-  const canCancel = !historical && onCancel && ['today','active','scheduled'].includes(st);
+  const canCancel = !historical && onCancel && !a.enteredAt && ['today','active','scheduled'].includes(st);
   return (
     <div className={`bg-white rounded-xl border border-stone-200 p-4 ${historical ? 'opacity-70' : ''}`}>
       <div className="flex items-start justify-between gap-3">
