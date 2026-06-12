@@ -183,22 +183,6 @@ export async function fetchMyConjunto() {
   return data;
 }
 
-export async function updateConjunto({ name, city, logoUrl }) {
-  if (!USE_SUPABASE) return;
-  const patch = {};
-  if (name !== undefined) patch.name = name;
-  if (city !== undefined) patch.city = city;
-  if (logoUrl !== undefined) patch.logo_url = logoUrl;
-
-  const conjunto = await fetchMyConjunto();
-  if (!conjunto) fail('updateConjunto', new Error('Conjunto no encontrado'));
-
-  const { error } = await supabase
-    .from('conjuntos')
-    .update(patch)
-    .eq('id', conjunto.id);
-  if (error) fail('updateConjunto', error);
-}
 
 /**
  * Upload a logo to the public `logos` bucket. Returns the public URL.
