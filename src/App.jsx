@@ -3384,12 +3384,26 @@ function ConfigPanel({ currentConjunto, setConjuntos, addLog, currentUser }) {
     }
   };
 
-  const save = () => {
+  const save = async () => {
     if (!name.trim() || !dirty) return;
     const changes = [];
     if (name.trim() !== currentConjunto.name) changes.push(`nombre: "${currentConjunto.name}" → "${name.trim()}"`);
     if (city.trim() !== (currentConjunto.city || '')) changes.push(`ubicación: "${currentConjunto.city || '—'}" → "${city.trim()}"`);
     if (logoData !== currentConjunto.logoData) changes.push(`logo ${logoData ? 'actualizado' : 'removido'}`);
+
+    // Persistir en Supabase ANTES de tocar el estado local
+    if (USE_SUPABASE) {
+      try {
+        await api.updateConjunto(currentConjunto.id, {
+          name: name.trim(),
+          city: city.trim(),
+          logoData,
+        });
+      } catch (e) {
+        alert('No se pudo guardar la configuración: ' + e.message);
+        return; // si la base lo rechaza, no mentimos en pantalla
+      }
+    }
 
     setConjuntos(prev => prev.map(c =>
       c.id === currentConjunto.id ? { ...c, name: name.trim(), city: city.trim(), logoData } : c

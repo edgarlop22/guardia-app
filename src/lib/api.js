@@ -852,3 +852,20 @@ export async function verifyGuardPin(guardId, pin) {
   if (error) fail('verifyGuardPin', error);
   return data; // { ok, guard } | { ok:false, error, locked? }
 }
+
+export async function updateConjunto(id, { name, city, logoData } = {}) {
+  const patch = {};
+  if (name !== undefined)     patch.name = name;
+  if (city !== undefined)     patch.city = city;
+  if (logoData !== undefined) patch.logo_url = logoData; // base64 o URL
+
+  const { data, error } = await supabase
+    .from('conjuntos')
+    .update(patch)
+    .eq('id', id)
+    .select()
+    .single();
+
+  if (error) throw new Error(error.message);
+  return data;
+}
