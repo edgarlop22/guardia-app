@@ -343,7 +343,7 @@ export default function App() {
   useEffect(() => {
     if (!USE_SUPABASE || !currentUser) return;
     if (backend.loading) return;
-    if (backend.conjuntos.length)   setConjuntos(backend.conjuntos.map(c => ({ ...c, logoData: c.logo_url || null })));
+    if (backend.conjuntos.length)   setConjuntos(backend.conjuntos.map(c => ({ ...c, logoData: c.logo_url || null, adminName: c.admin_name || '', adminPhone: c.admin_phone || '' })));
     if (backend.houses.length)      setHouses(backend.houses);
     setAuths(backend.auths);
     setInvitations(backend.invitations);
@@ -3364,12 +3364,16 @@ function CreateHouseModal({ onClose, onCreate, existing }) {
 function ConfigPanel({ currentConjunto, setConjuntos, addLog, currentUser }) {
   const [name, setName] = useState(currentConjunto?.name || '');
   const [city, setCity] = useState(currentConjunto?.city || '');
+  const [adminName, setAdminName] = useState(currentConjunto?.adminName || '');
+  const [adminPhone, setAdminPhone] = useState(currentConjunto?.adminPhone || '');
   const [logoData, setLogoData] = useState(currentConjunto?.logoData || null);
   const [uploading, setUploading] = useState(false);
   const [saved, setSaved] = useState(false);
 
   const dirty = name.trim() !== (currentConjunto?.name || '') ||
                 city.trim() !== (currentConjunto?.city || '') ||
+                adminName.trim() !== (currentConjunto?.adminName || '') ||
+                adminPhone.trim() !== (currentConjunto?.adminPhone || '') ||
                 logoData !== (currentConjunto?.logoData || null);
 
   const handleUploadLogo = async () => {
@@ -3389,24 +3393,29 @@ function ConfigPanel({ currentConjunto, setConjuntos, addLog, currentUser }) {
     const changes = [];
     if (name.trim() !== currentConjunto.name) changes.push(`nombre: "${currentConjunto.name}" → "${name.trim()}"`);
     if (city.trim() !== (currentConjunto.city || '')) changes.push(`ubicación: "${currentConjunto.city || '—'}" → "${city.trim()}"`);
+    if (adminName.trim() !== (currentConjunto.adminName || '')) changes.push(`administrador: "${currentConjunto.adminName || '—'}" → "${adminName.trim()}"`);
+    if (adminPhone.trim() !== (currentConjunto.adminPhone || '')) changes.push(`tel. admin: "${currentConjunto.adminPhone || '—'}" → "${adminPhone.trim()}"`);
     if (logoData !== currentConjunto.logoData) changes.push(`logo ${logoData ? 'actualizado' : 'removido'}`);
 
-    // Persistir en Supabase ANTES de tocar el estado local
     if (USE_SUPABASE) {
       try {
         await api.updateConjunto(currentConjunto.id, {
           name: name.trim(),
           city: city.trim(),
+          adminName: adminName.trim(),
+          adminPhone: adminPhone.trim(),
           logoData,
         });
       } catch (e) {
         alert('No se pudo guardar la configuración: ' + e.message);
-        return; // si la base lo rechaza, no mentimos en pantalla
+        return;
       }
     }
 
     setConjuntos(prev => prev.map(c =>
-      c.id === currentConjunto.id ? { ...c, name: name.trim(), city: city.trim(), logoData } : c
+      c.id === currentConjunto.id
+        ? { ...c, name: name.trim(), city: city.trim(), adminName: adminName.trim(), adminPhone: adminPhone.trim(), logoData }
+        : c
     ));
     addLog('config_changed', currentUser.name, `Configuración actualizada — ${changes.join('; ')}`);
     setSaved(true);
@@ -3459,6 +3468,22 @@ function ConfigPanel({ currentConjunto, setConjuntos, addLog, currentUser }) {
             <input value={city} onChange={e => setCity(e.target.value)} maxLength={100}
               placeholder="Ej: Zona 14, Ciudad de Guatemala"
               className="w-full bg-white border border-stone-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-orange-500"/>
+          </Field>
+        </div>
+
+        <div className="mt-4">
+          <Field label="Administrador del residencial" hint="Persona o empresa">
+            <input value={adminName} onChange={e => setAdminName(e.target.value)} maxLength={80}
+              placeholder="Ej: Junta Directiva, o Administradora González"
+              className="w-full bg-white border border-stone-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-orange-500"/>
+          </Field>
+        </div>
+
+        <div className="mt-4">
+          <Field label="Teléfono del administrador" hint="Contacto">
+            <input value={adminPhone} onChange={e => setAdminPhone(e.target.value)} maxLength={30}
+              placeholder="Ej: +502 ____-____"
+              className="w-full bg-white border border-stone-300 rounded-lg px-3 py-2.5 text-sm font-mono focus:outline-none focus:border-orange-500"/>
           </Field>
         </div>
 

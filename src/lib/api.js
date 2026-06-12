@@ -837,11 +837,13 @@ export async function verifyGuardPin(guardId, pin) {
   return data; // { ok, guard } | { ok:false, error, locked? }
 }
 
-export async function updateConjunto(id, { name, city, logoData } = {}) {
+export async function updateConjunto(id, { name, city, logoData, adminName, adminPhone } = {}) {
   const patch = {};
-  if (name !== undefined)     patch.name = name;
-  if (city !== undefined)     patch.city = city;
-  if (logoData !== undefined) patch.logo_url = logoData; // base64 o URL
+  if (name !== undefined)       patch.name = name;
+  if (city !== undefined)       patch.city = city;
+  if (logoData !== undefined)   patch.logo_url = logoData;
+  if (adminName !== undefined)  patch.admin_name = adminName;
+  if (adminPhone !== undefined) patch.admin_phone = adminPhone; // base64 o URL
 
   const { data, error } = await supabase
     .from('conjuntos')
