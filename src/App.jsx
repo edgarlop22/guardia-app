@@ -1591,7 +1591,7 @@ function NewAuthModal({ house, device, renewing, onClose, onSave }) {
           {/* Type selector */}
           <div className="grid grid-cols-2 gap-2">
             <TypePill active={type==='single'} onClick={() => setType('single')} icon={Calendar} label="Día único" desc="Una fecha exacta"/>
-            <TypePill active={type==='recurring'} onClick={() => setType('recurring')} icon={RefreshCw} label="Recurrente" desc="Hasta 15 días"/>
+            <TypePill active={type==='recurring'} onClick={() => setType('recurring')} icon={RefreshCw} label="Recurrente" desc="Hasta 30 días"/>
           </div>
 
           <Field label="Nombre del visitante">
