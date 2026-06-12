@@ -1176,28 +1176,27 @@ function ResidentView({ house, device, auths, setAuths, addLog, notifications, s
 
   return (
     <div className="space-y-6">
-      <section className="bg-white rounded-2xl border-2 border-orange-500 p-6 grain shadow-lg shadow-orange-500/10">
-        <div className="flex items-start justify-between gap-4">
-          <div className="min-w-0">
-            <p className="font-mono text-[10px] uppercase tracking-widest text-orange-600 font-bold">Mi residencia</p>
-            <h2 className="font-display text-4xl mt-1 truncate">Casa {house.numero}</h2>
-            <p className="font-mono text-[11px] text-stone-500 mt-0.5">{houseLong(house)}</p>
-            <div className="flex items-center gap-2 mt-2 flex-wrap">
-              <p className="text-stone-700 text-sm font-medium">{house.owner}</p>
-              <TipoBadge tipo={house.tipo} vigencia={house.vigencia} />
-            </div>
-          </div>
-          <div className="text-right shrink-0">
-            <p className="font-mono text-[10px] uppercase tracking-widest text-stone-500">Dispositivo</p>
-            <p className="text-sm font-medium mt-1 flex items-center gap-1.5 justify-end">
-              <Fingerprint className="w-3.5 h-3.5 text-orange-600" />
-              {device?.name}
-            </p>
-            <p className="font-mono text-[10px] text-stone-500">{device?.fingerprint}</p>
-          </div>
+      <section className="bg-white rounded-2xl border-2 border-orange-500 p-5 sm:p-6 grain shadow-lg shadow-orange-500/10">
+        <p className="font-mono text-[10px] uppercase tracking-widest text-orange-600 font-bold">Mi residencia</p>
+        <div className="flex items-center gap-2.5 mt-1 flex-wrap">
+          <h2 className="font-display text-4xl leading-none">Casa {house.numero}</h2>
+          <TipoBadge tipo={house.tipo} vigencia={house.vigencia} />
         </div>
+        <p className="font-mono text-[11px] text-stone-500 mt-2">{houseLong(house)}</p>
+        <p className="text-stone-800 text-sm font-medium mt-0.5">{house.owner}</p>
+
+        {/* Dispositivo vinculado — en su propia tira, sin competir con el título */}
+        <div className="flex items-center gap-2.5 mt-4 bg-stone-50 border border-stone-200 rounded-lg px-3 py-2">
+          <Fingerprint className="w-4 h-4 text-orange-600 shrink-0" />
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-medium truncate">{device?.name || 'Sin dispositivo'}</p>
+            <p className="font-mono text-[10px] text-stone-500">{device?.fingerprint || '—'}</p>
+          </div>
+          <span className="font-mono text-[9px] uppercase tracking-wider text-stone-400 shrink-0">Este equipo</span>
+        </div>
+
         <button onClick={() => { setShowForm(true); setRenewing(null); }}
-          className="mt-5 w-full bg-orange-500 hover:bg-orange-400 text-black font-bold rounded-xl py-3.5 flex items-center justify-center gap-2 transition shadow-md shadow-orange-500/20">
+          className="mt-4 w-full bg-orange-500 hover:bg-orange-400 text-black font-bold rounded-xl py-3.5 flex items-center justify-center gap-2 transition shadow-md shadow-orange-500/20">
           <Plus className="w-5 h-5"/> Nueva autorización
         </button>
       </section>
@@ -1238,9 +1237,11 @@ function ResidentView({ house, device, auths, setAuths, addLog, notifications, s
 
       {expired.length > 0 && (
         <section>
-          <h3 className="font-display text-2xl mb-3 text-stone-500">Historial</h3>
-          <div className="space-y-2">
-            {expired.slice(0,5).map(a => <AuthCard key={a.id} a={a} historical onRenew={(a) => { setRenewing(a); setShowForm(true); }} />)}
+          <h3 className="font-display text-xl mb-2 text-stone-500">Historial reciente</h3>
+          <div className="space-y-1.5">
+            {expired.slice(0,6).map(a => (
+              <HistoryRow key={a.id} a={a} onRenew={(a) => { setRenewing(a); setShowForm(true); }} />
+            ))}
           </div>
         </section>
       )}
@@ -1341,6 +1342,28 @@ function AuthCard({ a, historical, onRenew, onCancel }) {
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+function HistoryRow({ a, onRenew }) {
+  const st = authStatus(a);
+  const m = statusMeta[st] || statusMeta.expired;
+  const canRenew = a.type === 'recurring' && st === 'expired' && !!onRenew;
+  const when = a.exitedAt
+    ? fmtDateTime(a.exitedAt)
+    : (a.type === 'single' ? fmtDate(a.date) : fmtDate(a.endDate));
+  return (
+    <div className="flex items-center gap-2.5 bg-white rounded-lg border border-stone-200 px-3 py-2">
+      <span className={`text-[9px] font-mono px-1.5 py-0.5 rounded shrink-0 ${m.cls}`}>{m.label}</span>
+      <p className="text-sm font-medium truncate flex-1 min-w-0">{a.visitorName}</p>
+      <span className="text-[10px] font-mono text-stone-400 shrink-0">{when}</span>
+      {canRenew && (
+        <button onClick={() => onRenew(a)} title="Renovar"
+          className="text-orange-600 hover:bg-orange-50 rounded p-1 shrink-0">
+          <RefreshCw className="w-3.5 h-3.5"/>
+        </button>
+      )}
     </div>
   );
 }
@@ -1534,7 +1557,7 @@ function NewAuthModal({ house, device, renewing, onClose, onSave }) {
       if (startDate < TODAY_STR) return 'La fecha de inicio no puede ser pasada.';
       if (endDate < startDate) return 'La fecha final debe ser posterior al inicio.';
       const d = daysBetween(startDate, endDate);
-      if (d > 15) return `El rango máximo es 15 días (actual: ${d}).`;
+      if (d > 30) return `El rango máximo es 30 días (actual: ${d}).`;
       if (!docUploaded) return 'Para autorizaciones recurrentes debes adjuntar copia del documento.';
     }
     return null;
@@ -1593,8 +1616,8 @@ function NewAuthModal({ house, device, renewing, onClose, onSave }) {
                   <input type="date" value={startDate} min={TODAY_STR} onChange={e => setStartDate(e.target.value)}
                     className="w-full bg-white border border-stone-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-orange-600"/>
                 </Field>
-                <Field label="Hasta" hint={`Máx ${daysBetween(startDate, endDate)}/15 días`}>
-                  <input type="date" value={endDate} min={startDate} max={todayPlus(15)} onChange={e => setEndDate(e.target.value)}
+                <Field label="Hasta" hint={`Máx ${daysBetween(startDate, endDate)}/30 días`}>
+                  <input type="date" value={endDate} min={startDate} max={todayPlus(30)} onChange={e => setEndDate(e.target.value)}
                     className="w-full bg-white border border-stone-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-orange-600"/>
                 </Field>
               </div>
