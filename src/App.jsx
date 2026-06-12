@@ -3369,6 +3369,7 @@ function ConfigPanel({ currentConjunto, setConjuntos, addLog, currentUser }) {
   const [logoData, setLogoData] = useState(currentConjunto?.logoData || null);
   const [uploading, setUploading] = useState(false);
   const [saved, setSaved] = useState(false);
+  const isPrincipal = currentUser?.adminLevel === 1;
 
   const dirty = name.trim() !== (currentConjunto?.name || '') ||
                 city.trim() !== (currentConjunto?.city || '') ||
@@ -3487,20 +3488,27 @@ function ConfigPanel({ currentConjunto, setConjuntos, addLog, currentUser }) {
           </Field>
         </div>
 
-        <div className="flex items-center gap-3 mt-5">
-          <button onClick={save}
-            disabled={!name.trim() || !dirty}
-            className={`px-4 py-2 rounded-lg text-sm font-bold transition ${
-              !name.trim() || !dirty
-                ? 'bg-stone-200 text-stone-400 cursor-not-allowed'
-                : 'bg-orange-500 hover:bg-orange-400 text-black shadow-md shadow-orange-500/20'
-            }`}>
-            Guardar cambios
-          </button>
-          {saved && (
-            <span className="text-xs text-orange-700 flex items-center gap-1 font-medium"><CheckCircle2 className="w-3.5 h-3.5"/> Guardado en auditoría</span>
-          )}
-        </div>
+        {isPrincipal ? (
+          <div className="flex items-center gap-3 mt-5">
+            <button onClick={save}
+              disabled={!name.trim() || !dirty}
+              className={`px-4 py-2 rounded-lg text-sm font-bold transition ${
+                !name.trim() || !dirty
+                  ? 'bg-stone-200 text-stone-400 cursor-not-allowed'
+                  : 'bg-orange-500 hover:bg-orange-400 text-black shadow-md shadow-orange-500/20'
+              }`}>
+              Guardar cambios
+            </button>
+            {saved && (
+              <span className="text-xs text-orange-700 flex items-center gap-1 font-medium"><CheckCircle2 className="w-3.5 h-3.5"/> Guardado en auditoría</span>
+            )}
+          </div>
+        ) : (
+          <div className="bg-stone-100 border border-stone-200 rounded-lg p-3 text-xs text-stone-600 flex gap-2 mt-5">
+            <Lock className="w-3.5 h-3.5 shrink-0 mt-0.5 text-stone-500"/>
+            <p>Solo el <b>Administrador Principal</b> puede editar la identidad del residencial. Puedes verla, pero no modificarla.</p>
+          </div>
+        )}
 
         <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-900 flex gap-2 mt-4">
           <ShieldAlert className="w-3.5 h-3.5 shrink-0 mt-0.5"/>
