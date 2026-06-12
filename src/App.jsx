@@ -2967,11 +2967,11 @@ function AdminView({ houses, setHouses, auths, logs, addLog,
             )}
           </div>
         </div>
-        <div className="grid grid-cols-4 gap-3 mt-4">
-          <Stat label="Casas" value={aHouses.length}/>
-          <Stat label="Usuarios" value={aUsers.filter(u => u.active !== false).length}/>
-          <Stat label="Disp." value={aHouses.reduce((s, h) => s + (h.devices?.length || 0), 0)}/>
-          <Stat label="Autoriz." value={auths.length}/>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mt-4">
+          <Stat icon={Home}       label="Casas"          value={aHouses.length}/>
+          <Stat icon={Users}      label="Usuarios"       value={aUsers.filter(u => u.active !== false).length}/>
+          <Stat icon={Smartphone} label="Dispositivos"   value={aHouses.reduce((s, h) => s + (h.devices?.length || 0), 0)}/>
+          <Stat icon={UserCheck}  label="Autorizaciones" value={auths.length}/>
         </div>
       </div>
 
@@ -3005,11 +3005,14 @@ function AdminView({ houses, setHouses, auths, logs, addLog,
   );
 }
 
-function Stat({ label, value }) {
+function Stat({ label, value, icon: Icon }) {
   return (
-    <div className="bg-stone-50 rounded-lg p-3">
-      <p className="font-display text-3xl leading-none">{value}</p>
-      <p className="font-mono text-[10px] text-stone-500 uppercase mt-1">{label}</p>
+    <div className="bg-stone-50 border border-stone-200/70 rounded-lg p-3">
+      <div className="flex items-center gap-1.5">
+        {Icon && <Icon className="w-3.5 h-3.5 text-orange-600 shrink-0"/>}
+        <p className="font-mono text-[9px] sm:text-[10px] text-stone-500 uppercase tracking-wide truncate">{label}</p>
+      </div>
+      <p className="font-display text-3xl leading-none mt-1.5">{value}</p>
     </div>
   );
 }
