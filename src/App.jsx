@@ -701,9 +701,7 @@ function LoginScreen({ users, onLogin, onActivate, onForgotPassword }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const [showDemo, setShowDemo] = useState(true);
   const [claim, setClaim] = useState(null);     // { fp, freePoints } cuando la tablet debe elegir punto
-  const [claiming, setClaiming] = useState(false);
 
   const submit = async () => {
     setError('');
@@ -729,15 +727,7 @@ function LoginScreen({ users, onLogin, onActivate, onForgotPassword }) {
     setClaim(null); setError('');
   };
 
-  const quickLogin = (u) => onLogin(u.email, 'demo');
-
-  const demoAccounts = [
-    { u: users.find(x => x.id === 'u_admin1'),  label: 'Admin Principal · Almendros', icon: Crown,    color: 'orange' },
-    { u: users.find(x => x.id === 'u_admin2'),  label: 'Admin Delegado · Almendros',  icon: KeyRound, color: 'orange' },
-    { u: users.find(x => x.id === 'u_garita1'), label: 'Garita · Almendros',          icon: Shield,   color: 'stone'  },
-    { u: users.find(x => x.id === 'u_juan'),    label: 'Residente · Almendros',       icon: Home,     color: 'stone'  },
-  ].filter(x => x.u);
-
+  
   if (claim) {
     const LABELS = { entrada: 'Entrada', salida: 'Salida', ambas: 'Ambas' };
     return (
@@ -857,39 +847,7 @@ function LoginScreen({ users, onLogin, onActivate, onForgotPassword }) {
             </button>
           </div>
         </div>
-
-        <div className="mt-10 pt-6 border-t border-stone-900">
-          <button onClick={() => setShowDemo(!showDemo)}
-            className="font-mono text-[10px] uppercase tracking-widest text-orange-400 mb-3 flex items-center gap-1">
-            <span className="w-1.5 h-1.5 rounded-full bg-orange-400 animate-pulse"></span>
-            Cuentas demo (clic para acceso rápido)
-          </button>
-          {showDemo && (
-            <div className="grid grid-cols-2 gap-2">
-              {demoAccounts.map(d => {
-                const Icon = d.icon;
-                const isOrange = d.color === 'orange';
-                return (
-                  <button key={d.u.id} onClick={() => quickLogin(d.u)}
-                    className={`text-left p-3 rounded-lg border transition ${
-                      isOrange
-                        ? 'bg-orange-950/40 border-orange-900 hover:border-orange-500'
-                        : 'bg-stone-900 border-stone-800 hover:border-stone-600'
-                    }`}>
-                    <Icon className={`w-4 h-4 mb-1 ${isOrange ? 'text-orange-400' : 'text-stone-400'}`}/>
-                    <p className={`text-xs font-mono uppercase tracking-wider ${isOrange ? 'text-orange-300' : 'text-stone-400'}`}>{d.label}</p>
-                    <p className="text-sm font-medium mt-0.5 truncate">{d.u.name}</p>
-                  </button>
-                );
-              })}
-            </div>
-          )}
-          <p className="text-[10px] font-mono text-stone-600 mt-3 text-center">
-            Para probar activación → <span className="text-orange-400">"Activar con código"</span> arriba
-          </p>
-        </div>
-
-        <p className="text-[11px] text-stone-600 text-center mt-10">
+        <p className="text-[11px] text-stone-600 text-center mt-10 pt-6 border-t border-stone-900">
           Acceso solo para usuarios autorizados por la administración del residencial.
           Los intentos de acceso quedan registrados.
         </p>
